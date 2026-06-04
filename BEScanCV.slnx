@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="BEScanCV.API/BEScanCV.API.csproj" />
+  <Project Path="BEScanCV.Application/BEScanCV.Application.csproj" />
+  <Project Path="BEScanCV.Domain/BEScanCV.Domain.csproj" />
+  <Project Path="BEScanCV.Infrastructure/BEScanCV.Infrastructure.csproj" />
+</Solution>
