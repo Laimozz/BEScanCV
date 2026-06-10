@@ -1,7 +1,8 @@
+// BEScanCV.Infrastructure/Services/AiSearchQueryParserClient.cs
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using BEScanCV.Application.DTOS;
+using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Infrastructure.Options;
 using Microsoft.Extensions.Options;
@@ -16,7 +17,7 @@ public sealed class AiSearchQueryParserClient(HttpClient httpClient, IOptions<Ai
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, _options.ParseSearchQueryPath)
         {
-            Content = JsonContent.Create(new ParseSearchQueryRequest(query))
+            Content = JsonContent.Create(new { text = query })
         };
 
         if (!string.IsNullOrWhiteSpace(_options.ApiKey))
@@ -25,7 +26,28 @@ public sealed class AiSearchQueryParserClient(HttpClient httpClient, IOptions<Ai
         }
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var errorMessage = responseBody;
+
+            // Cố gắng parse JSON để lấy field "detail"
+            try
+            {
+                var errorJson = JsonDocument.Parse(responseBody);
+                if (errorJson.RootElement.TryGetProperty("detail", out var detailElement))
+                {
+                    errorMessage = detailElement.GetString() ?? responseBody;
+                }
+            }
+            catch (JsonException)
+            {
+                // Nếu chuỗi trả về không phải định dạng JSON (VD: lỗi 500 HTML), thì sẽ giữ nguyên gốc responseBody
+            }
+
+            throw new AiParserException((int)response.StatusCode, errorMessage);
+        }
 
         await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
         return await ReadCriteriaAsync(responseStream, cancellationToken);
@@ -42,6 +64,7 @@ public sealed class AiSearchQueryParserClient(HttpClient httpClient, IOptions<Ai
         }
 
         var fields = new Dictionary<string, IReadOnlyCollection<string>>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var property in root.EnumerateObject())
         {
             AddField(fields, property.Name, property.Value);
@@ -71,12 +94,10 @@ public sealed class AiSearchQueryParserClient(HttpClient httpClient, IOptions<Ai
             {
                 fields[name] = values;
             }
-
             return;
         }
 
         var searchValue = ToSearchValue(value);
-
         if (!string.IsNullOrWhiteSpace(searchValue))
         {
             fields[name] = SplitSearchValues(searchValue)
@@ -103,6 +124,4 @@ public sealed class AiSearchQueryParserClient(HttpClient httpClient, IOptions<Ai
             _ => null
         };
     }
-
-    private sealed record ParseSearchQueryRequest([property: JsonPropertyName("query")] string Query);
 }

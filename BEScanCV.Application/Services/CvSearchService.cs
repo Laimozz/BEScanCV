@@ -15,16 +15,17 @@ public sealed class CvSearchService(
     public async Task<CvSearchResponse> SearchAsync(CvSearchRequest request, CancellationToken cancellationToken = default)
     {
         var page = NormalizePage(request.Page);
+        var limit = request.Limit > 0 ? request.Limit : 10; // Default limit fallback
 
         if (string.IsNullOrWhiteSpace(request.Query))
         {
-            return CreatePagedResponse(page, []);
+            return CreatePagedResponse(page, limit, []);
         }
 
         var criteria = await searchQueryParser.ParseAsync(request.Query, cancellationToken);
         if (criteria.Fields.Count == 0)
         {
-            return CreatePagedResponse(page, []);
+            return CreatePagedResponse(page, limit, []);
         }
 
         var cvs = await cvInfoRepository.GetWithSkillsAsync(cancellationToken);
@@ -57,19 +58,21 @@ public sealed class CvSearchService(
             .Select(candidate => candidate.Result)
             .ToArray();
 
-        return CreatePagedResponse(page, rankedResults);
+        return CreatePagedResponse(page, limit, rankedResults);
     }
 
-    private static CvSearchResponse CreatePagedResponse(int page, IReadOnlyCollection<CvSearchResultDto> rankedResults)
+    private static CvSearchResponse CreatePagedResponse(int page, int limit, IReadOnlyCollection<CvSearchResultDto> rankedResults)
     {
         var totalItems = rankedResults.Count;
-        var totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)PageSize);
+        var totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)limit);
         var results = rankedResults
-            .Skip((page - 1) * PageSize)
-            .Take(PageSize)
+            .Skip((page - 1) * limit)
+            .Take(limit)
             .ToArray();
 
-        return new CvSearchResponse(page, PageSize, totalItems, totalPages, results);
+        var meta = new PaginationMetaDto(totalItems, page, limit, totalPages);
+        
+        return new CvSearchResponse(results, meta);
     }
 
     private static int NormalizePage(int page)
