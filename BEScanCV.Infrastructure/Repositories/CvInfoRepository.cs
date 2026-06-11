@@ -11,8 +11,8 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
     {
         return dbContext.CvInfos
             .Include(cvInfo => cvInfo.CvFile)
+                .ThenInclude(cvFile => cvFile!.Uploader)
             .Include(cvInfo => cvInfo.CvSkills)
-                .ThenInclude(cvSkill => cvSkill.Skill)
             .FirstOrDefaultAsync(cvInfo => cvInfo.Id == id, cancellationToken);
     }
 
@@ -20,8 +20,8 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
     {
         return dbContext.CvInfos
             .Include(cvInfo => cvInfo.CvFile)
+                .ThenInclude(cvFile => cvFile!.Uploader)
             .Include(cvInfo => cvInfo.CvSkills)
-                .ThenInclude(cvSkill => cvSkill.Skill)
             .FirstOrDefaultAsync(cvInfo => cvInfo.CvFileId == cvFileId, cancellationToken);
     }
 
@@ -30,8 +30,8 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
         return await dbContext.CvInfos
             .AsNoTracking()
             .Include(cvInfo => cvInfo.CvFile)
+                .ThenInclude(cvFile => cvFile!.Uploader)
             .Include(cvInfo => cvInfo.CvSkills)
-                .ThenInclude(cvSkill => cvSkill.Skill)
             .ToListAsync(cancellationToken);
     }
 

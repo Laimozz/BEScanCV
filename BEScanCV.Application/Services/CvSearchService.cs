@@ -35,21 +35,15 @@ public sealed class CvSearchService(
             {
                 var matchedCriteria = GetMatchedCriteria(criteria, cv);
                 var candidateSkills = cv.CvSkills
-                    .Select(cvSkill => cvSkill.Skill?.Name)
+                    .Select(cvSkill => cvSkill.Name)
                     .Where(skill => !string.IsNullOrWhiteSpace(skill))
-                    .Select(skill => skill!)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray();
 
                 return new
                 {
                     Score = matchedCriteria.Length,
-                    Result = new CvSearchResultDto(
-                        cv.FullName,
-                        cv.Email,
-                        candidateSkills,
-                        cv.CreatedAt,
-                        cv.CvFile?.UploadedBy ?? 0)
+                    Result = CreateResult(cv, candidateSkills)
                 };
             })
             .Where(candidate => candidate.Score > 0)
@@ -111,6 +105,7 @@ public sealed class CvSearchService(
             "fullname" => IsTextMatched(normalizedValue, cv.FullName),
             "email" => IsTextMatched(normalizedValue, cv.Email),
             "phone" => IsTextMatched(normalizedValue, cv.Phone),
+            "position" => IsTextMatched(normalizedValue, cv.Position),
             "dateofbirth" => IsTextMatched(normalizedValue, cv.DateOfBirth?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
             "address" => IsTextMatched(normalizedValue, cv.Address),
             "summary" => IsTextMatched(normalizedValue, cv.Summary),
@@ -120,9 +115,7 @@ public sealed class CvSearchService(
             "updatedat" => IsTextMatched(normalizedValue, cv.UpdatedAt.ToString("O", CultureInfo.InvariantCulture)),
             "status" => IsTextMatched(normalizedValue, cv.Status),
             "uploadedby" => IsExactNumberMatched(value, cv.CvFile?.UploadedBy),
-            "skill" or "skills" or "skillname" => cv.CvSkills.Any(cvSkill => IsTextMatched(normalizedValue, cvSkill.Skill?.Name)),
-            "skillid" => cv.CvSkills.Any(cvSkill => IsExactNumberMatched(value, cvSkill.SkillId)),
-            "confidencescore" => cv.CvSkills.Any(cvSkill => IsMinimumDecimalMatched(value, cvSkill.ConfidenceScore)),
+            "skill" or "skills" or "skillname" => cv.CvSkills.Any(cvSkill => IsTextMatched(normalizedValue, cvSkill.Name)),
             "exp" or "experience" or "yearsofexperience" => cv.CvSkills.Any(cvSkill => IsMinimumDecimalMatched(value, cvSkill.YearsOfExperience)),
             _ => false
         };
@@ -162,5 +155,19 @@ public sealed class CvSearchService(
         return candidate is not null &&
             decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) &&
             candidate.Value >= number;
+    }
+
+    private static CvSearchResultDto CreateResult(CvInfo cv, string[] candidateSkills)
+    {
+        var uploader = cv.CvFile?.Uploader;
+        return new CvSearchResultDto(
+            cv.FullName,
+            cv.Email,
+            cv.CvFileId,
+            candidateSkills,
+            cv.CreatedAt,
+            new CvUploaderDto(
+                cv.CvFile?.UploadedBy ?? 0,
+                uploader?.FullName ?? string.Empty));
     }
 }

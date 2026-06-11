@@ -30,18 +30,20 @@ public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGet
             .Select(cv =>
             {
                 var candidateSkills = cv.CvSkills
-                    .Select(cvSkill => cvSkill.Skill?.Name)
+                    .Select(cvSkill => cvSkill.Name)
                     .Where(skill => !string.IsNullOrWhiteSpace(skill))
-                    .Select(skill => skill!)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray();
 
                 return new CvSearchResultDto(
                     cv.FullName,
                     cv.Email,
+                    cv.CvFileId,
                     candidateSkills,
                     cv.CreatedAt,
-                    cv.CvFile?.UploadedBy ?? 0);
+                    new CvUploaderDto(
+                        cv.CvFile?.UploadedBy ?? 0,
+                        cv.CvFile?.Uploader?.FullName ?? string.Empty));
             })
             .OrderByDescending(cv => cv.CreatedAt) // Ensures a predictable sorted feed
             .ToArray();
@@ -89,8 +91,11 @@ public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGet
         if (!string.IsNullOrWhiteSpace(cv.Email) && Normalize(cv.Email).Contains(searchTerm))
             return true;
 
+        if (!string.IsNullOrWhiteSpace(cv.Position) && Normalize(cv.Position).Contains(searchTerm))
+            return true;
+
         // Search in Skill names
-        if (cv.CvSkills?.Any(cs => !string.IsNullOrWhiteSpace(cs.Skill?.Name) && Normalize(cs.Skill.Name).Contains(searchTerm)) ?? false)
+        if (cv.CvSkills?.Any(cs => !string.IsNullOrWhiteSpace(cs.Name) && Normalize(cs.Name).Contains(searchTerm)) ?? false)
             return true;
 
         return false;
