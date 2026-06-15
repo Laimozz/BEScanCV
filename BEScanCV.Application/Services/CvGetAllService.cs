@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
@@ -94,10 +95,21 @@ public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGet
         if (!string.IsNullOrWhiteSpace(cv.Position) && Normalize(cv.Position).Contains(searchTerm))
             return true;
 
+        if (!string.IsNullOrWhiteSpace(cv.RawText) && Normalize(cv.RawText).Contains(searchTerm))
+            return true;
+
+        if (IsJsonTextMatched(searchTerm, cv.Educations) || IsJsonTextMatched(searchTerm, cv.ProfileData))
+            return true;
+
         // Search in Skill names
         if (cv.CvSkills?.Any(cs => !string.IsNullOrWhiteSpace(cs.Name) && Normalize(cs.Name).Contains(searchTerm)) ?? false)
             return true;
 
         return false;
+    }
+
+    private static bool IsJsonTextMatched(string searchTerm, JsonDocument? value)
+    {
+        return value is not null && Normalize(value.RootElement.ToString()).Contains(searchTerm);
     }
 }

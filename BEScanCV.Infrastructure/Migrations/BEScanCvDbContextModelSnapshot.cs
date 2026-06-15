@@ -2,6 +2,7 @@ using BEScanCV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using System.Text.Json;
 
 #nullable disable
 
@@ -39,17 +40,19 @@ partial class BEScanCvDbContextModelSnapshot : ModelSnapshot
             entity.Property<long>("Id").ValueGeneratedOnAdd().HasColumnName("id");
             NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(entity.Property<long>("Id"));
             entity.Property<string>("Address").HasMaxLength(500).HasColumnName("address");
-            entity.Property<string[]>("Certifications").IsRequired().HasColumnType("text[]").HasColumnName("certifications");
             entity.Property<DateTime>("CreatedAt").HasColumnName("created_at");
             entity.Property<long>("CvFileId").HasColumnName("cv_file_id");
             entity.Property<DateOnly?>("DateOfBirth").HasColumnName("date_of_birth");
-            entity.Property<string[]>("Educations").IsRequired().HasColumnType("text[]").HasColumnName("educations");
+            entity.Property<JsonDocument>("Educations").HasColumnType("jsonb").HasColumnName("educations");
             entity.Property<string>("Email").IsRequired().HasMaxLength(255).HasColumnName("email");
             entity.Property<string>("FullName").IsRequired().HasMaxLength(255).HasColumnName("full_name");
             entity.Property<string>("Phone").HasMaxLength(50).HasColumnName("phone");
             entity.Property<string>("Position").HasMaxLength(255).HasColumnName("position");
+            entity.Property<JsonDocument>("ProfileData").HasColumnType("jsonb").HasColumnName("profile_data");
+            entity.Property<string>("RawText").HasColumnType("text").HasColumnName("raw_text");
             entity.Property<string>("Status").IsRequired().HasMaxLength(20).HasColumnName("status");
             entity.Property<string>("Summary").HasColumnType("text").HasColumnName("summary");
+            entity.Property<int?>("TotalExperienceYears").HasColumnName("total_experience_years");
             entity.Property<DateTime>("UpdatedAt").HasColumnName("updated_at");
             entity.HasKey("Id");
             entity.HasIndex("CvFileId").IsUnique();
@@ -62,7 +65,6 @@ partial class BEScanCvDbContextModelSnapshot : ModelSnapshot
             NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(entity.Property<long>("Id"));
             entity.Property<long>("CvInfoId").HasColumnName("cv_infos_id");
             entity.Property<string>("Name").IsRequired().HasMaxLength(100).HasColumnName("name");
-            entity.Property<decimal?>("YearsOfExperience").HasPrecision(4, 1).HasColumnName("years_of_experience");
             entity.HasKey("Id");
             entity.HasIndex("CvInfoId");
             entity.HasIndex("Name");

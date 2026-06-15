@@ -69,11 +69,13 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(255).IsRequired();
             entity.Property(e => e.Phone).HasColumnName("phone").HasMaxLength(50);
             entity.Property(e => e.Position).HasColumnName("position").HasMaxLength(255);
+            entity.Property(e => e.TotalExperienceYears).HasColumnName("total_experience_years");
             entity.Property(e => e.DateOfBirth).HasColumnName("date_of_birth");
             entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(500);
             entity.Property(e => e.Summary).HasColumnName("summary").HasColumnType("text");
-            entity.Property(e => e.Educations).HasColumnName("educations").HasColumnType("text[]");
-            entity.Property(e => e.Certifications).HasColumnName("certifications").HasColumnType("text[]");
+            entity.Property(e => e.Educations).HasColumnName("educations").HasColumnType("jsonb");
+            entity.Property(e => e.RawText).HasColumnName("raw_text").HasColumnType("text");
+            entity.Property(e => e.ProfileData).HasColumnName("profile_data").HasColumnType("jsonb");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
@@ -86,7 +88,6 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             entity.Property(e => e.Id).HasColumnName("id").UseIdentityAlwaysColumn();
             entity.Property(e => e.CvInfoId).HasColumnName("cv_infos_id");
             entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
-            entity.Property(e => e.YearsOfExperience).HasColumnName("years_of_experience").HasPrecision(4, 1);
             entity.HasOne(e => e.CvInfo).WithMany(e => e.CvSkills).HasForeignKey(e => e.CvInfoId);
             entity.HasIndex(e => e.CvInfoId);
             entity.HasIndex(e => e.Name);

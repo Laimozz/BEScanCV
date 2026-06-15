@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
@@ -109,14 +110,15 @@ public sealed class CvSearchService(
             "dateofbirth" => IsTextMatched(normalizedValue, cv.DateOfBirth?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
             "address" => IsTextMatched(normalizedValue, cv.Address),
             "summary" => IsTextMatched(normalizedValue, cv.Summary),
-            "education" or "educations" => cv.Educations.Any(item => IsTextMatched(normalizedValue, item)),
-            "certification" or "certifications" => cv.Certifications.Any(item => IsTextMatched(normalizedValue, item)),
+            "rawtext" => IsTextMatched(normalizedValue, cv.RawText),
+            "profiledata" => IsJsonTextMatched(normalizedValue, cv.ProfileData),
+            "education" or "educations" => IsJsonTextMatched(normalizedValue, cv.Educations),
             "createdat" => IsTextMatched(normalizedValue, cv.CreatedAt.ToString("O", CultureInfo.InvariantCulture)),
             "updatedat" => IsTextMatched(normalizedValue, cv.UpdatedAt.ToString("O", CultureInfo.InvariantCulture)),
             "status" => IsTextMatched(normalizedValue, cv.Status),
             "uploadedby" => IsExactNumberMatched(value, cv.CvFile?.UploadedBy),
             "skill" or "skills" or "skillname" => cv.CvSkills.Any(cvSkill => IsTextMatched(normalizedValue, cvSkill.Name)),
-            "exp" or "experience" or "yearsofexperience" => cv.CvSkills.Any(cvSkill => IsMinimumDecimalMatched(value, cvSkill.YearsOfExperience)),
+            "exp" or "experience" or "totalexperienceyears" => IsMinimumIntMatched(value, cv.TotalExperienceYears),
             _ => false
         };
     }
@@ -131,6 +133,16 @@ public sealed class CvSearchService(
         var normalizedValue = Normalize(value);
         return normalizedValue.Contains(normalizedKeyword, StringComparison.OrdinalIgnoreCase) ||
             normalizedKeyword.Contains(normalizedValue, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsJsonTextMatched(string normalizedKeyword, JsonDocument? value)
+    {
+        if (value is null)
+        {
+            return false;
+        }
+
+        return IsTextMatched(normalizedKeyword, value.RootElement.ToString());
     }
 
     private static string Normalize(string value) => value.Trim().ToLowerInvariant();
@@ -150,10 +162,10 @@ public sealed class CvSearchService(
             candidate.Value == number;
     }
 
-    private static bool IsMinimumDecimalMatched(string value, decimal? candidate)
+    private static bool IsMinimumIntMatched(string value, int? candidate)
     {
         return candidate is not null &&
-            decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) &&
+            int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) &&
             candidate.Value >= number;
     }
 
