@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace BEScanCV.Domain.Entities;
 
@@ -9,11 +10,14 @@ public sealed class CvInfo
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
+    public string? Position { get; set; }
+    public int? TotalExperienceYears { get; set; }
     public DateOnly? DateOfBirth { get; set; }
     public string? Address { get; set; }
     public string? Summary { get; set; }
-    public string[] Educations { get; set; } = [];
-    public string[] Certifications { get; set; } = [];
+    public JsonDocument? Educations { get; set; }
+    public string? RawText { get; set; }
+    public JsonDocument? ProfileData { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public string Status { get; set; } = "Active";

@@ -41,10 +41,9 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ICvFileRepository, CvFileRepository>();
         services.AddScoped<ICvInfoRepository, CvInfoRepository>();
-        services.AddScoped<ISkillRepository, SkillRepository>();
+        services.AddScoped<ICvSkillRepository, CvSkillRepository>();
 
-        // Thay bằng AiServiceSearchQueryParser
-        services.AddScoped<ISearchQueryParser, FakeSearchQueryParser>();
+        services.AddScoped<ISearchQueryParser, AiSearchQueryParserClient>();
 
         return services;
     }

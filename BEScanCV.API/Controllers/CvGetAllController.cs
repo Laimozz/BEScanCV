@@ -7,28 +7,18 @@ using Microsoft.AspNetCore.Mvc;
 namespace BEScanCV.API.Controllers;
 
 [ApiController]
-[Route("api/v1/cvs/search")]
-public sealed class CvSearchController(ICvSearchService cvSearchService) : ControllerBase
+[Route("api/v1/cvs/getAll")]
+public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : ControllerBase
 {
     [HttpPost]
-    public async Task<ActionResult<ApiResponse<CvSearchResponse>>> Search(
-        [FromBody] CvSearchRequest request,
+    public async Task<ActionResult<ApiResponse<CvGetAllResponse>>> GetAll (
+        [FromBody] CvGetAllRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Query))
-        {
-            return BadRequest(new ApiResponse<object>(null)
-            {
-                Message = "Query is required.",
-                Success = false,
-                StatusCode = 400
-            });
-        }
-
         try
         {
-            var response = await cvSearchService.SearchAsync(request, cancellationToken);
-            return Ok(new ApiResponse<CvSearchResponse>(response));
+            var response = await cvGetAllService.CvGetAllAsync(request, cancellationToken);
+            return Ok(new ApiResponse<CvGetAllResponse>(response));
         }
         catch (AiParserException ex)
         {

@@ -4,14 +4,10 @@ namespace BEScanCV.Domain.Entities;
 
 public sealed class CvSkill
 {
+    public long Id { get; set; }
     public long CvInfoId { get; set; }
-    public long SkillId { get; set; }
-    public decimal? ConfidenceScore { get; set; }
-    public decimal? YearsOfExperience { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     [ForeignKey(nameof(CvInfoId))]
     public CvInfo? CvInfo { get; set; }
-
-    [ForeignKey(nameof(SkillId))]
-    public Skill? Skill { get; set; }
 }

@@ -2,8 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace BEScanCV.Application.DTOS;
 
-
-public class CvSearchResponse
+public class CvGetAllResponse
 {
     [JsonPropertyName("items")]
     public CvSearchResultDto[] Items { get; set; }
@@ -11,7 +10,7 @@ public class CvSearchResponse
     [JsonPropertyName("meta")]
     public PaginationMetaDto Meta { get; set; }
 
-    public CvSearchResponse(CvSearchResultDto[] items, PaginationMetaDto meta)
+    public CvGetAllResponse(CvSearchResultDto[] items, PaginationMetaDto meta)
     {
         Items = items;
         Meta = meta;
