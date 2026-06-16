@@ -17,7 +17,7 @@ public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : Contr
     {
         try
         {
-            var response = await cvGetAllService.CvGetAllAsync(request, cancellationToken);
+            var response = await cvGetAllService.CvGetAllAsync(request, GetRequestBaseUrl(), cancellationToken);
             return Ok(new ApiResponse<CvGetAllResponse>(response));
         }
         catch (AiParserException ex)
@@ -34,4 +34,7 @@ public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : Contr
             });
         }
     }
+
+    private string GetRequestBaseUrl() =>
+        $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
 }
