@@ -13,6 +13,14 @@ public partial class UpdateCvFilesFileTypeConstraint : Migration
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.Sql("""
+            UPDATE cv_files
+               SET file_type = lower(trim(file_type))
+             WHERE file_type IS NOT NULL;
+
+            UPDATE cv_files
+               SET file_type = 'pdf'
+             WHERE lower(file_type) NOT IN ('pdf', 'docx');
+
             ALTER TABLE cv_files
                 DROP CONSTRAINT IF EXISTS cv_files_file_type_check;
 

@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<ICvSkillRepository, CvSkillRepository>();
 
         services.AddScoped<ISearchQueryParser, AiSearchQueryParserClient>();
+        services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 
         return services;
     }

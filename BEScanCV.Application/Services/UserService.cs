@@ -1,0 +1,145 @@
+using BEScanCV.Application.DTOS;
+using BEScanCV.Application.Interfaces;
+using BEScanCV.Application.Interfaces.Repositories;
+using BEScanCV.Domain.Entities;
+
+namespace BEScanCV.Application.Services;
+
+public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher) : IUserService
+{
+    private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Admin", "Recruiter", "Interviewer"
+    };
+
+    private static readonly HashSet<string> ValidStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Active", "Inactive"
+    };
+
+    public async Task<GetUsersResponse> GetUsersAsync(
+        int page,
+        int pageSize,
+        string? role,
+        string? status,
+        CancellationToken cancellationToken = default)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
+        if (pageSize > 100) pageSize = 100;
+
+        var (items, totalCount) = await userRepository.GetAllAsync(
+            page, pageSize, role, status, cancellationToken);
+
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        var userItems = items.Select(u => new UserItemDto
+        {
+            Id = u.Id,
+            FullName = u.FullName,
+            Email = u.Email,
+            Role = u.Role,
+            Status = u.Status,
+            LastActive = u.UpdatedAt
+        }).ToList();
+
+        return new GetUsersResponse
+        {
+            Items = userItems,
+            Pagination = new UserPaginationDto
+            {
+                Page = page,
+                PageSize = pageSize,
+                TotalItems = totalCount,
+                TotalPages = totalPages
+            }
+        };
+    }
+
+    public async Task<CreateUserResponse> CreateUserAsync(
+        CreateUserRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.FullName))
+            throw new ArgumentException("Full name is required.");
+
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new ArgumentException("Email is required.");
+
+        if (string.IsNullOrWhiteSpace(request.Password))
+            throw new ArgumentException("Password is required.");
+
+        if (request.Password != request.ConfirmPassword)
+            throw new ArgumentException("Password and confirm password do not match.");
+                // TODO: Auto generate password
+
+
+        if (!string.IsNullOrWhiteSpace(request.Role) && !ValidRoles.Contains(request.Role))
+            throw new ArgumentException($"Invalid role. Allowed values: {string.Join(", ", ValidRoles)}");
+
+        var emailExists = await userRepository.ExistsByEmailAsync(request.Email, cancellationToken);
+        if (emailExists)
+            throw new InvalidOperationException("Email already exists");
+                // TODO: Auto generate password
+
+
+        var user = new User
+        {
+            FullName = request.FullName.Trim(),
+            Email = request.Email.Trim().ToLowerInvariant(),
+            PasswordHash = passwordHasher.Hash(request.Password),
+            Role = string.IsNullOrWhiteSpace(request.Role) ? "Recruiter" : request.Role,
+            Status = "Active",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        //: TODO: Send email to user with credentials
+
+        await userRepository.AddAsync(user, cancellationToken);
+
+        return new CreateUserResponse { Id = user.Id };
+    }
+
+    public async Task UpdateUserAsync(
+        long id,
+        UpdateUserRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await userRepository.GetByIdAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException("User not found");
+
+        if (request.FullName is not null)
+        {
+            if (string.IsNullOrWhiteSpace(request.FullName))
+                throw new ArgumentException("Full name cannot be empty.");
+            user.FullName = request.FullName.Trim();
+        }
+
+        if (request.Role is not null)
+        {
+            if (!ValidRoles.Contains(request.Role))
+                throw new ArgumentException($"Invalid role. Allowed values: {string.Join(", ", ValidRoles)}");
+            user.Role = request.Role;
+        }
+
+        if (request.Status is not null)
+        {
+            if (!ValidStatuses.Contains(request.Status))
+                throw new ArgumentException($"Invalid status. Allowed values: {string.Join(", ", ValidStatuses)}");
+            user.Status = request.Status;
+        }
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await userRepository.UpdateAsync(user, cancellationToken);
+    }
+
+    public async Task DeleteUserAsync(
+        long id,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await userRepository.GetByIdAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException("User not found");
+
+        await userRepository.DeleteAsync(user, cancellationToken);
+    }
+}
