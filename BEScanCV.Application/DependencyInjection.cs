@@ -10,6 +10,7 @@ public static class DependencyInjection
     {
         services.AddScoped<ICvSearchService, CvSearchService>();
         services.AddScoped<ICvGetAllService, CvGetAllService>();
+        services.AddScoped<ICvDetailService, CvDetailService>();
 
         return services;
     }
