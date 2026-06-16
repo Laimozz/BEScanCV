@@ -14,15 +14,20 @@ public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGet
         var page = NormalizePage(request.Page);
         var limit = request.Limit > 0 ? request.Limit : 10;
 
-        // Fetch records from database
         var cvs = await cvInfoRepository.GetWithSkillsAsync(cancellationToken);
 
-        // Apply search filter if provided
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var searchTerm = Normalize(request.Search);
             cvs = cvs
                 .Where(cv => MatchesSearch(cv, searchTerm))
+                .ToList();
+        }
+
+        if (request.Filter is not null)
+        {
+            cvs = cvs
+                .Where(cv => MatchesFilter(cv, request.Filter))
                 .ToList();
         }
 
@@ -123,5 +128,42 @@ public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGet
     private static bool IsJsonTextMatched(string searchTerm, JsonDocument? value)
     {
         return value is not null && Normalize(value.RootElement.ToString()).Contains(searchTerm);
+    }
+
+    private static bool MatchesFilter(CvInfo cv, CvGetAllFilterDto filter)
+    {
+        if (filter.TotalExperienceYears.HasValue &&
+            (!cv.TotalExperienceYears.HasValue || cv.TotalExperienceYears.Value < filter.TotalExperienceYears.Value))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Position) &&
+            (string.IsNullOrWhiteSpace(cv.Position) || !Normalize(cv.Position).Contains(Normalize(filter.Position))))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Skills))
+        {
+            var requiredSkills = filter.Skills
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(Normalize)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToArray();
+
+            if (requiredSkills.Length > 0 &&
+                !requiredSkills.All(required => cv.CvSkills?.Any(cs => 
+                {
+                    var normalizedSkill = Normalize(cs.Name);
+                    return !string.IsNullOrWhiteSpace(normalizedSkill) && 
+                           (normalizedSkill.Contains(required) || required.Contains(normalizedSkill));
+                }) ?? false))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
