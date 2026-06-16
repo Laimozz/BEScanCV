@@ -1,14 +1,14 @@
 using BEScanCV.Application;
 using BEScanCV.Infrastructure;
 using BEScanCV.Infrastructure.Data;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Định nghĩa tên Policy cho CORS
 const string allOriginsPolicy = "AllowAllOrigins";
-
-// Add services to the container.
 
 // 2. Thêm dịch vụ CORS vào DI Container
 builder.Services.AddCors(options =>
@@ -24,7 +24,6 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -43,10 +42,35 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// 4. Đọc forwarded headers từ ngrok (X-Forwarded-Host, X-Forwarded-Proto)
+//    Giúp Request.Host và Request.Scheme phản ánh đúng URL ngrok
+//    → pdf_url trả về sẽ là https://xxxx.ngrok-free.app/files/... thay vì localhost
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                     | ForwardedHeaders.XForwardedProto
+                     | ForwardedHeaders.XForwardedHost,
+    // Tin tưởng tất cả proxy (ngrok, load balancer...)
+    KnownIPNetworks = { },
+    KnownProxies = { }
+});
+
 app.UseHttpsRedirection();
 
-// 3. Kích hoạt CORS Middleware 
+// 3. Kích hoạt CORS Middleware
 app.UseCors(allOriginsPolicy);
+
+// 4. Serve file PDF từ D:\PDFLocal dưới route /files
+//    FE truy cập: http://<BE_IP>:<port>/files/<ten-file>.pdf
+const string localPdfFolder = @"D:\PDFLocal";
+if (!Directory.Exists(localPdfFolder))
+    Directory.CreateDirectory(localPdfFolder);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(localPdfFolder),
+    RequestPath = "/files"
+});
 
 app.UseAuthorization();
 

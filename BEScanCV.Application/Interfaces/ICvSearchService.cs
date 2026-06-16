@@ -4,5 +4,8 @@ namespace BEScanCV.Application.Interfaces;
 
 public interface ICvSearchService
 {
-    Task<CvSearchResponse> SearchAsync(CvSearchRequest request, CancellationToken cancellationToken = default);
+    Task<CvSearchResponse> SearchAsync(
+        CvSearchRequest request,
+        string requestBaseUrl,
+        CancellationToken cancellationToken = default);
 }

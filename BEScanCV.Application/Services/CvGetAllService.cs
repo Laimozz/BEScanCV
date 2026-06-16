@@ -9,7 +9,7 @@ namespace BEScanCV.Application.Services;
 
 public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGetAllService
 {
-    public async Task<CvGetAllResponse> CvGetAllAsync(CvGetAllRequest request, CancellationToken cancellationToken = default)
+    public async Task<CvGetAllResponse> CvGetAllAsync(CvGetAllRequest request, string requestBaseUrl, CancellationToken cancellationToken = default)
     {
         var page = NormalizePage(request.Page);
         var limit = request.Limit > 0 ? request.Limit : 10;
@@ -44,7 +44,8 @@ public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGet
                     cv.CreatedAt,
                     new CvUploaderDto(
                         cv.CvFile?.UploadedBy ?? 0,
-                        cv.CvFile?.Uploader?.FullName ?? string.Empty));
+                        cv.CvFile?.Uploader?.FullName ?? string.Empty),
+                    BuildPdfUrl(cv.CvFile?.FileUrl, requestBaseUrl));
             })
             .OrderByDescending(cv => cv.CreatedAt) // Ensures a predictable sorted feed
             .ToArray();
@@ -66,9 +67,20 @@ public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGet
     return new CvGetAllResponse(results, meta);
 }
 
-    private static int NormalizePage(int page)
+    private static int NormalizePage(int page) => page < 1 ? 1 : page;
+
+    private static string? BuildPdfUrl(string? fileUrl, string requestBaseUrl)
     {
-        return page < 1 ? 1 : page;
+        if (string.IsNullOrWhiteSpace(fileUrl)) return null;
+
+        if (Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            return fileUrl;
+
+        var fileName = Path.GetFileName(
+            fileUrl.Replace('/', Path.DirectorySeparatorChar)
+                   .Replace('\\', Path.DirectorySeparatorChar));
+        return $"{requestBaseUrl.TrimEnd('/')}/files/{fileName}";
     }
 
    

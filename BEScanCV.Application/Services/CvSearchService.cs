@@ -13,7 +13,7 @@ public sealed class CvSearchService(
 {
     private const int PageSize = 10;
 
-    public async Task<CvSearchResponse> SearchAsync(CvSearchRequest request, CancellationToken cancellationToken = default)
+    public async Task<CvSearchResponse> SearchAsync(CvSearchRequest request, string requestBaseUrl, CancellationToken cancellationToken = default)
     {
         var page = NormalizePage(request.Page);
         var limit = request.Limit > 0 ? request.Limit : 10; // Default limit fallback
@@ -44,7 +44,7 @@ public sealed class CvSearchService(
                 return new
                 {
                     Score = matchedCriteria.Length,
-                    Result = CreateResult(cv, candidateSkills)
+                    Result = CreateResult(cv, candidateSkills, requestBaseUrl)
                 };
             })
             .Where(candidate => candidate.Score > 0)
@@ -169,7 +169,7 @@ public sealed class CvSearchService(
             candidate.Value >= number;
     }
 
-    private static CvSearchResultDto CreateResult(CvInfo cv, string[] candidateSkills)
+    private static CvSearchResultDto CreateResult(CvInfo cv, string[] candidateSkills, string requestBaseUrl)
     {
         var uploader = cv.CvFile?.Uploader;
         return new CvSearchResultDto(
@@ -180,6 +180,21 @@ public sealed class CvSearchService(
             cv.CreatedAt,
             new CvUploaderDto(
                 cv.CvFile?.UploadedBy ?? 0,
-                uploader?.FullName ?? string.Empty));
+                uploader?.FullName ?? string.Empty),
+            BuildPdfUrl(cv.CvFile?.FileUrl, requestBaseUrl));
+    }
+
+    private static string? BuildPdfUrl(string? fileUrl, string requestBaseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(fileUrl)) return null;
+
+        if (Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            return fileUrl;
+
+        var fileName = Path.GetFileName(
+            fileUrl.Replace('/', Path.DirectorySeparatorChar)
+                   .Replace('\\', Path.DirectorySeparatorChar));
+        return $"{requestBaseUrl.TrimEnd('/')}/files/{fileName}";
     }
 }

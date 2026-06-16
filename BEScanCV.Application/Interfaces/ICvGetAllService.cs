@@ -4,5 +4,8 @@ namespace BEScanCV.Application.Interfaces;
 
 public interface ICvGetAllService
 {
-    Task<CvGetAllResponse> CvGetAllAsync(CvGetAllRequest request, CancellationToken cancellationToken = default);
+    Task<CvGetAllResponse> CvGetAllAsync(
+        CvGetAllRequest request,
+        string requestBaseUrl,
+        CancellationToken cancellationToken = default);
 }

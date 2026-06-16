@@ -27,7 +27,7 @@ public sealed class CvSearchController(ICvSearchService cvSearchService) : Contr
 
         try
         {
-            var response = await cvSearchService.SearchAsync(request, cancellationToken);
+            var response = await cvSearchService.SearchAsync(request, GetRequestBaseUrl(), cancellationToken);
             return Ok(new ApiResponse<CvSearchResponse>(response));
         }
         catch (AiParserException ex)
@@ -44,4 +44,7 @@ public sealed class CvSearchController(ICvSearchService cvSearchService) : Contr
             });
         }
     }
+
+    private string GetRequestBaseUrl() =>
+        $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
 }
