@@ -23,4 +23,9 @@ public interface IUserService
     Task DeleteUserAsync(
         long id,
         CancellationToken cancellationToken = default);
+
+    Task ChangePasswordAsync(
+        long userId,
+        ChangePasswordRequest request,
+        CancellationToken cancellationToken = default);
 }

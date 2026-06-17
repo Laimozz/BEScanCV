@@ -4,6 +4,9 @@ using BEScanCV.Infrastructure.Data;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using BEScanCV.Application.Interfaces;
+using Resend;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,11 +24,32 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Add email service (Resend)
+
+var apiKey = builder.Configuration.GetSection("Resend")["ApiKey"];
+
+Console.WriteLine(apiKey);
+
+builder.Services.Configure<ResendClientOptions>(o =>
+{
+    o.ApiToken = apiKey;
+});
+builder.Services.AddHttpClient<IResend, ResendClient>();
+builder.Services.AddScoped<IEmailService, ResendEmailService>();
+
+
+// Add email service(Postmark)
+// builder.Services.Configure<PostmarkSettings>(
+// builder.Configuration.GetSection("Postmark"));
+// builder.Services.AddScoped<IEmailService, PostmarkEmailService>();
 builder.Services.AddControllers();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Problem with Resend: can only send mails to API key owner (trannguyenphuc1902@gmail.com)
+// Problem with Postmark: have to verify domain
 
 var app = builder.Build();
 

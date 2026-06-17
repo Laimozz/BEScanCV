@@ -5,7 +5,7 @@ using BEScanCV.Domain.Entities;
 
 namespace BEScanCV.Application.Services;
 
-public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher) : IUserService
+public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService) : IUserService
 {
     private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -93,9 +93,8 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        //: TODO: Send email to user with credentials
-
         await userRepository.AddAsync(user, cancellationToken);
+        await emailService.SendAccountCreatedEmailAsync(request.Email, passwordHasher.Hash(request.Password));
 
         return new CreateUserResponse { Id = user.Id };
     }
@@ -141,5 +140,34 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
             ?? throw new KeyNotFoundException("User not found");
 
         await userRepository.DeleteAsync(user, cancellationToken);
+    }
+
+    public async Task ChangePasswordAsync(
+        long userId,
+        ChangePasswordRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+            throw new ArgumentException("Current password is required.");
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
+            throw new ArgumentException("New password is required.");
+
+        if (string.IsNullOrWhiteSpace(request.ConfirmNewPassword))
+            throw new ArgumentException("Confirm new password is required.");
+
+        if (request.NewPassword != request.ConfirmNewPassword)
+            throw new ArgumentException("New password and confirm password do not match.");
+
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException("User not found");
+
+        if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+            throw new InvalidOperationException("Current password is incorrect.");
+
+        user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await userRepository.UpdateAsync(user, cancellationToken);
     }
 }
