@@ -4,6 +4,7 @@ using System.Text.Json;
 using BEScanCV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BEScanCV.Infrastructure.Migrations
 {
     [DbContext(typeof(BEScanCvDbContext))]
-    partial class BEScanCvDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260617042055_AddCvUploadBatchProcessing")]
+    partial class AddCvUploadBatchProcessing
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,32 +25,6 @@ namespace BEScanCV.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("BEScanCV.Domain.Entities.CvCertification", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("CvInfoId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("cv_info_id");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CvInfoId");
-
-                    b.ToTable("cv_certification", (string)null);
-                });
 
             modelBuilder.Entity("BEScanCV.Domain.Entities.CvFile", b =>
                 {
@@ -98,8 +75,6 @@ namespace BEScanCV.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AiDocumentId");
-
                     b.HasIndex("UploadedBy");
 
                     b.ToTable("cv_files", (string)null);
@@ -147,16 +122,6 @@ namespace BEScanCV.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("full_name");
 
-                    b.Property<bool>("IsMarked")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_marked");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("text")
-                        .HasColumnName("note");
-
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -171,33 +136,19 @@ namespace BEScanCV.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("profile_data");
 
-                    b.Property<JsonDocument>("QualityDetails")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("quality_details");
-
-                    b.Property<string>("QualityReason")
-                        .HasColumnType("text")
-                        .HasColumnName("quality_reason");
-
-                    b.Property<double?>("QualityScore")
-                        .HasColumnType("double precision")
-                        .HasColumnName("quality_score");
-
                     b.Property<string>("RawText")
                         .HasColumnType("text")
                         .HasColumnName("raw_text");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
                     b.Property<string>("Summary")
                         .HasColumnType("text")
                         .HasColumnName("summary");
-
-                    b.Property<string>("Tag")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("New")
-                        .HasColumnName("tag");
 
                     b.Property<int?>("TotalExperienceYears")
                         .HasColumnType("integer")
@@ -207,22 +158,12 @@ namespace BEScanCV.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.Property<string>("WorkType")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("work_type");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CvFileId")
                         .IsUnique();
 
-                    b.ToTable("cv_infos", null, t =>
-                        {
-                            t.HasCheckConstraint("cv_infos_tag_check", "tag IN ('New', 'Contracted', 'In-Process', 'Rejected', 'Hired')");
-
-                            t.HasCheckConstraint("cv_infos_work_type_check", "work_type IS NULL OR work_type IN ('Remote', 'Full-time', 'Part-time')");
-                        });
+                    b.ToTable("cv_infos", (string)null);
                 });
 
             modelBuilder.Entity("BEScanCV.Domain.Entities.CvSkill", b =>
@@ -314,102 +255,6 @@ namespace BEScanCV.Infrastructure.Migrations
                     b.HasIndex("UploadedBy");
 
                     b.ToTable("cv_upload_batches", (string)null);
-                });
-
-            modelBuilder.Entity("BEScanCV.Domain.Entities.CvUploadBatchItem", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("CvUploadBatchId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("cv_upload_batch_id");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasColumnType("text")
-                        .HasColumnName("error_message");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("file_name");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint")
-                        .HasColumnName("file_size");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("QUEUE")
-                        .HasColumnName("status");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CvUploadBatchId");
-
-                    b.HasIndex("Status");
-
-                    b.ToTable("batch_upload_items", null, t =>
-                        {
-                            t.HasCheckConstraint("batch_upload_items_status_check", "status IN ('QUEUE', 'PROCESSING', 'COMPLETED', 'FAILED')");
-                        });
-                });
-
-            modelBuilder.Entity("BEScanCV.Domain.Entities.CvWorkExperience", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Company")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("company");
-
-                    b.Property<long>("CvInfoId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("cv_info_id");
-
-                    b.Property<string>("Duration")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("duration");
-
-                    b.Property<string>("Position")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("position");
-
-                    b.Property<string>("Responsibility")
-                        .HasColumnType("text")
-                        .HasColumnName("responsibility");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CvInfoId");
-
-                    b.ToTable("work_experience", (string)null);
                 });
 
             modelBuilder.Entity("BEScanCV.Domain.Entities.RefreshToken", b =>
@@ -504,17 +349,6 @@ namespace BEScanCV.Infrastructure.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("BEScanCV.Domain.Entities.CvCertification", b =>
-                {
-                    b.HasOne("BEScanCV.Domain.Entities.CvInfo", "CvInfo")
-                        .WithMany("CvCertifications")
-                        .HasForeignKey("CvInfoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CvInfo");
-                });
-
             modelBuilder.Entity("BEScanCV.Domain.Entities.CvFile", b =>
                 {
                     b.HasOne("BEScanCV.Domain.Entities.User", "Uploader")
@@ -559,28 +393,6 @@ namespace BEScanCV.Infrastructure.Migrations
                     b.Navigation("Uploader");
                 });
 
-            modelBuilder.Entity("BEScanCV.Domain.Entities.CvUploadBatchItem", b =>
-                {
-                    b.HasOne("BEScanCV.Domain.Entities.CvUploadBatch", "CvUploadBatch")
-                        .WithMany("Items")
-                        .HasForeignKey("CvUploadBatchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CvUploadBatch");
-                });
-
-            modelBuilder.Entity("BEScanCV.Domain.Entities.CvWorkExperience", b =>
-                {
-                    b.HasOne("BEScanCV.Domain.Entities.CvInfo", "CvInfo")
-                        .WithMany("WorkExperiences")
-                        .HasForeignKey("CvInfoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CvInfo");
-                });
-
             modelBuilder.Entity("BEScanCV.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("BEScanCV.Domain.Entities.User", "User")
@@ -599,16 +411,7 @@ namespace BEScanCV.Infrastructure.Migrations
 
             modelBuilder.Entity("BEScanCV.Domain.Entities.CvInfo", b =>
                 {
-                    b.Navigation("CvCertifications");
-
                     b.Navigation("CvSkills");
-
-                    b.Navigation("WorkExperiences");
-                });
-
-            modelBuilder.Entity("BEScanCV.Domain.Entities.CvUploadBatch", b =>
-                {
-                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("BEScanCV.Domain.Entities.User", b =>

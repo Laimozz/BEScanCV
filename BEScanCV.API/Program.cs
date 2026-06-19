@@ -1,6 +1,7 @@
 using BEScanCV.Application;
 using BEScanCV.Infrastructure;
 using BEScanCV.Infrastructure.Data;
+using BEScanCV.Infrastructure.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -59,6 +60,7 @@ app.UseHttpsRedirection();
 
 // 3. Kích hoạt CORS Middleware
 app.UseCors(allOriginsPolicy);
+app.UseWebSockets();
 
 // 4. Serve file PDF từ D:\PDFLocal dưới route /files
 //    FE truy cập: http://<BE_IP>:<port>/files/<ten-file>.pdf
@@ -69,10 +71,25 @@ if (!Directory.Exists(localPdfFolder))
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(localPdfFolder),
-    RequestPath = "/files"
+    RequestPath = "/files",
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append(
+            "Access-Control-Allow-Origin",
+            "*"
+        );
+    }
 });
 
 app.UseAuthorization();
+
+app.Map("/ws/upload-progress/{batchId}", async (
+    HttpContext httpContext,
+    string batchId,
+    WebSocketUploadProgressNotifier notifier) =>
+{
+    await notifier.HandleClientAsync(httpContext, batchId, httpContext.RequestAborted);
+});
 
 app.MapControllers();
 
