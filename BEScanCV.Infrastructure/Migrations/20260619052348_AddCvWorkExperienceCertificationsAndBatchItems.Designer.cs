@@ -4,6 +4,7 @@ using System.Text.Json;
 using BEScanCV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BEScanCV.Infrastructure.Migrations
 {
     [DbContext(typeof(BEScanCvDbContext))]
-    partial class BEScanCvDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260619052348_AddCvWorkExperienceCertificationsAndBatchItems")]
+    partial class AddCvWorkExperienceCertificationsAndBatchItems
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -153,10 +156,6 @@ namespace BEScanCV.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_marked");
 
-                    b.Property<string>("Note")
-                        .HasColumnType("text")
-                        .HasColumnName("note");
-
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -207,11 +206,6 @@ namespace BEScanCV.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.Property<string>("WorkType")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("work_type");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CvFileId")
@@ -220,8 +214,6 @@ namespace BEScanCV.Infrastructure.Migrations
                     b.ToTable("cv_infos", null, t =>
                         {
                             t.HasCheckConstraint("cv_infos_tag_check", "tag IN ('New', 'Contracted', 'In-Process', 'Rejected', 'Hired')");
-
-                            t.HasCheckConstraint("cv_infos_work_type_check", "work_type IS NULL OR work_type IN ('Remote', 'Full-time', 'Part-time')");
                         });
                 });
 
