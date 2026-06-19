@@ -15,7 +15,8 @@ public class PostmarkEmailService : IEmailService
 
     public async Task SendAccountCreatedEmailAsync(
         string recipientEmail,
-        string temporaryPassword)
+        string temporaryPassword,
+        CancellationToken cancellationToken = default)
     {
         var client = new PostmarkClient(serverToken);
 

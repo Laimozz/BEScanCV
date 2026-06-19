@@ -66,12 +66,7 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new ArgumentException("Email is required.");
 
-        if (string.IsNullOrWhiteSpace(request.Password))
-            throw new ArgumentException("Password is required.");
-
-        if (request.Password != request.ConfirmPassword)
-            throw new ArgumentException("Password and confirm password do not match.");
-                // TODO: Auto generate password
+        var password = GeneratePassword(8);
 
 
         if (!string.IsNullOrWhiteSpace(request.Role) && !ValidRoles.Contains(request.Role))
@@ -87,14 +82,14 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         {
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
-            PasswordHash = passwordHasher.Hash(request.Password),
+            PasswordHash = passwordHasher.Hash(password),
             Role = string.IsNullOrWhiteSpace(request.Role) ? "Recruiter" : request.Role,
             Status = "Active",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         await userRepository.AddAsync(user, cancellationToken);
-        await emailService.SendAccountCreatedEmailAsync(request.Email, passwordHasher.Hash(request.Password));
+        await emailService.SendAccountCreatedEmailAsync(request.Email, password);
 
         return new CreateUserResponse { Id = user.Id };
     }
@@ -169,5 +164,13 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         user.UpdatedAt = DateTime.UtcNow;
 
         await userRepository.UpdateAsync(user, cancellationToken);
+    }
+
+    private static string GeneratePassword(int length)
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        return new string(Enumerable.Range(0, length)
+            .Select(_ => chars[Random.Shared.Next(chars.Length)])
+            .ToArray());
     }
 }

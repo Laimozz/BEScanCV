@@ -5,6 +5,7 @@ using BEScanCV.Infrastructure.Options;
 using BEScanCV.Infrastructure.Repositories;
 using BEScanCV.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.InMemory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,8 +15,17 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<BEScanCvDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        var useInMemory = configuration.GetValue<bool>("UseInMemoryDb");
+        if (useInMemory)
+        {
+            services.AddDbContext<BEScanCvDbContext>(options =>
+                options.UseInMemoryDatabase("BEScanCvDev"));
+        }
+        else
+        {
+            services.AddDbContext<BEScanCvDbContext>(options =>
+                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        }
 
         var aiServiceOptions = new AiServiceOptions
         {
