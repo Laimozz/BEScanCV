@@ -7,6 +7,7 @@ using BEScanCV.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace BEScanCV.Infrastructure;
 
@@ -21,14 +22,30 @@ public static class DependencyInjection
         {
             BaseUrl = configuration[$"{AiServiceOptions.SectionName}:BaseUrl"] ?? string.Empty,
             ParseSearchQueryPath = configuration[$"{AiServiceOptions.SectionName}:ParseSearchQueryPath"] ?? "/parse-search-query",
+            ProcessCvPath = configuration[$"{AiServiceOptions.SectionName}:ProcessCvPath"] ?? "/api/v1/cv/index",
             ApiKey = configuration[$"{AiServiceOptions.SectionName}:ApiKey"]
         };
 
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(aiServiceOptions));
+
+        services.Configure<RedisQueueOptions>(
+            configuration.GetSection(RedisQueueOptions.SectionName));
+
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+        if (string.IsNullOrWhiteSpace(redisConnectionString))
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:Redis must be configured for the CV upload queue.");
+        }
+
+        services.AddSingleton<IConnectionMultiplexer>(
+            _ => ConnectionMultiplexer.Connect(redisConnectionString));
+
         services.AddSingleton(serviceProvider =>
         {
             var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AiServiceOptions>>().Value;
             var client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(150);
             if (!string.IsNullOrWhiteSpace(options.BaseUrl))
             {
                 client.BaseAddress = new Uri(options.BaseUrl);
@@ -42,8 +59,17 @@ public static class DependencyInjection
         services.AddScoped<ICvFileRepository, CvFileRepository>();
         services.AddScoped<ICvInfoRepository, CvInfoRepository>();
         services.AddScoped<ICvSkillRepository, CvSkillRepository>();
+        services.AddScoped<ICvUploadBatchRepository, CvUploadBatchRepository>();
 
         services.AddScoped<ISearchQueryParser, AiSearchQueryParserClient>();
+        services.AddScoped<ICvFileStorageService, LocalCvFileStorageService>();
+        services.AddScoped<ICvProcessingClient, AiCvProcessingClient>();
+        services.AddScoped<ICvUploadFailureCleanupService, CvUploadFailureCleanupService>();
+        services.AddSingleton<ICvUploadJobQueue, RedisCvUploadJobQueue>();
+        services.AddSingleton<WebSocketUploadProgressNotifier>();
+        services.AddSingleton<IUploadProgressNotifier>(
+            serviceProvider => serviceProvider.GetRequiredService<WebSocketUploadProgressNotifier>());
+        services.AddHostedService<CvUploadBackgroundWorker>();
 
         return services;
     }

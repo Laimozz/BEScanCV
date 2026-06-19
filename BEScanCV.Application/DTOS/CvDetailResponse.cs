@@ -38,12 +38,6 @@ public sealed class CvDetailResponse
     [JsonPropertyName("educations")]
     public JsonElement? Educations { get; set; }
 
-    [JsonPropertyName("profile_data")]
-    public JsonElement? ProfileData { get; set; }
-
-    [JsonPropertyName("raw_text")]
-    public string? RawText { get; set; }
-
     [JsonPropertyName("skills")]
     public string[] Skills { get; set; } = [];
 

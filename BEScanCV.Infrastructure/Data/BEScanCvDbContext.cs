@@ -10,6 +10,7 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
     public DbSet<CvFile> CvFiles => Set<CvFile>();
     public DbSet<CvInfo> CvInfos => Set<CvInfo>();
     public DbSet<CvSkill> CvSkills => Set<CvSkill>();
+    public DbSet<CvUploadBatch> CvUploadBatches => Set<CvUploadBatch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -91,6 +92,27 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             entity.HasOne(e => e.CvInfo).WithMany(e => e.CvSkills).HasForeignKey(e => e.CvInfoId);
             entity.HasIndex(e => e.CvInfoId);
             entity.HasIndex(e => e.Name);
+        });
+
+        modelBuilder.Entity<CvUploadBatch>(entity =>
+        {
+            entity.ToTable("cv_upload_batches");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").HasMaxLength(64);
+            entity.Property(e => e.UploadedBy).HasColumnName("uploaded_by");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+            entity.Property(e => e.TotalFiles).HasColumnName("total_files");
+            entity.Property(e => e.CompletedFiles).HasColumnName("completed_files");
+            entity.Property(e => e.FailedFiles).HasColumnName("failed_files");
+            entity.Property(e => e.CancelledFiles).HasColumnName("cancelled_files");
+            entity.Property(e => e.ProcessingFiles).HasColumnName("processing_files");
+            entity.Property(e => e.PendingFiles).HasColumnName("pending_files");
+            entity.Property(e => e.RequestIds).HasColumnName("request_ids").HasColumnType("text").IsRequired();
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasOne(e => e.Uploader).WithMany(e => e.CvUploadBatches).HasForeignKey(e => e.UploadedBy);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.UploadedBy);
         });
     }
 }

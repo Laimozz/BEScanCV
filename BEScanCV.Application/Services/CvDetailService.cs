@@ -65,8 +65,6 @@ public sealed class CvDetailService(ICvInfoRepository cvInfoRepository) : ICvDet
             Address = cv.Address,
             Summary = cv.Summary,
             Educations = cv.Educations?.RootElement.Clone(),
-            ProfileData = cv.ProfileData?.RootElement.Clone(),
-            RawText = cv.RawText,
             Skills = cv.CvSkills
                 .Select(s => s.Name)
                 .Where(s => !string.IsNullOrWhiteSpace(s))

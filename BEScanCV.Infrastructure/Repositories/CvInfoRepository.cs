@@ -37,13 +37,21 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
 
     public async Task AddAsync(CvInfo cvInfo, CancellationToken cancellationToken = default)
     {
+        NormalizeDateTimes(cvInfo);
         await dbContext.CvInfos.AddAsync(cvInfo, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(CvInfo cvInfo, CancellationToken cancellationToken = default)
     {
+        NormalizeDateTimes(cvInfo);
         dbContext.CvInfos.Update(cvInfo);
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void NormalizeDateTimes(CvInfo cvInfo)
+    {
+        cvInfo.CreatedAt = DateTimeUtcNormalizer.Normalize(cvInfo.CreatedAt);
+        cvInfo.UpdatedAt = DateTimeUtcNormalizer.Normalize(cvInfo.UpdatedAt);
     }
 }
