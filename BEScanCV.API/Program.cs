@@ -71,7 +71,14 @@ if (!Directory.Exists(localPdfFolder))
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(localPdfFolder),
-    RequestPath = "/files"
+    RequestPath = "/files",
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append(
+            "Access-Control-Allow-Origin",
+            "*"
+        );
+    }
 });
 
 app.UseAuthorization();

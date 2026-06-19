@@ -42,8 +42,12 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
 
     public async Task<bool> TryStartFileAsync(
         string batchId,
+        long batchUploadItemId,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction =
+            await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
         var updatedRows = await dbContext.CvUploadBatches
             .Where(batch =>
                 batch.Id == batchId &&
@@ -56,13 +60,42 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
                 .SetProperty(batch => batch.UpdatedAt, DateTime.UtcNow),
                 cancellationToken);
 
-        return updatedRows > 0;
+        if (updatedRows == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
+        }
+
+        var updatedItems = await dbContext.CvUploadBatchItems
+            .Where(item =>
+                item.Id == batchUploadItemId &&
+                item.CvUploadBatchId == batchId &&
+                item.Status == "QUEUE")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.Status, "PROCESSING")
+                .SetProperty(item => item.ErrorMessage, (string?)null)
+                .SetProperty(item => item.UpdatedAt, DateTime.UtcNow),
+                cancellationToken);
+
+        if (updatedItems == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw new InvalidOperationException(
+                $"Upload item {batchUploadItemId} cannot be moved to PROCESSING.");
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return true;
     }
 
     public async Task MarkFileCompletedAsync(
         string batchId,
+        long batchUploadItemId,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction =
+            await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
         var updatedRows = await dbContext.CvUploadBatches
             .Where(batch => batch.Id == batchId && batch.ProcessingFiles > 0)
             .ExecuteUpdateAsync(setters => setters
@@ -76,6 +109,26 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
             throw new InvalidOperationException(
                 $"Upload batch {batchId} has no processing file to complete.");
         }
+
+        var updatedItems = await dbContext.CvUploadBatchItems
+            .Where(item =>
+                item.Id == batchUploadItemId &&
+                item.CvUploadBatchId == batchId &&
+                item.Status == "PROCESSING")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.Status, "COMPLETED")
+                .SetProperty(item => item.ErrorMessage, (string?)null)
+                .SetProperty(item => item.UpdatedAt, DateTime.UtcNow),
+                cancellationToken);
+
+        if (updatedItems == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw new InvalidOperationException(
+                $"Upload item {batchUploadItemId} cannot be moved to COMPLETED.");
+        }
+
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task<CvBatchUploadStatusResponse?> RequestCancellationAsync(
@@ -134,7 +187,30 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.Id == batchId, cancellationToken);
 
-        return batch is null ? null : BuildStatus(batch);
+        if (batch is null)
+        {
+            return null;
+        }
+
+        var items = await dbContext.CvUploadBatchItems
+            .AsNoTracking()
+            .Where(item => item.CvUploadBatchId == batchId)
+            .OrderBy(item => item.Id)
+            .Select(item => new CvBatchUploadItemResponse
+            {
+                Id = item.Id,
+                FileName = item.FileName,
+                FileSize = item.FileSize,
+                Status = item.Status,
+                ErrorMessage = item.ErrorMessage,
+                CreatedAt = item.CreatedAt,
+                UpdatedAt = item.UpdatedAt
+            })
+            .ToArrayAsync(cancellationToken);
+
+        var response = BuildStatus(batch);
+        response.Items = items;
+        return response;
     }
 
     public static string BuildRequestToken(string requestId) => $"|{requestId.Trim()}|";

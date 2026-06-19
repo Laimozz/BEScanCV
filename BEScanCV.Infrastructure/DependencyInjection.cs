@@ -60,11 +60,12 @@ public static class DependencyInjection
         services.AddScoped<ICvInfoRepository, CvInfoRepository>();
         services.AddScoped<ICvSkillRepository, CvSkillRepository>();
         services.AddScoped<ICvUploadBatchRepository, CvUploadBatchRepository>();
+        services.AddScoped<ICvUploadBatchItemRepository, CvUploadBatchItemRepository>();
 
         services.AddScoped<ISearchQueryParser, AiSearchQueryParserClient>();
         services.AddScoped<ICvFileStorageService, LocalCvFileStorageService>();
         services.AddScoped<ICvProcessingClient, AiCvProcessingClient>();
-        services.AddScoped<ICvUploadFailureCleanupService, CvUploadFailureCleanupService>();
+        services.AddScoped<ICvCleanupService, CvCleanupService>();
         services.AddSingleton<ICvUploadJobQueue, RedisCvUploadJobQueue>();
         services.AddSingleton<WebSocketUploadProgressNotifier>();
         services.AddSingleton<IUploadProgressNotifier>(

@@ -92,22 +92,31 @@ public sealed class CvUploadBackgroundWorker(
     {
         using var scope = serviceScopeFactory.CreateScope();
         var batchRepository = scope.ServiceProvider.GetRequiredService<ICvUploadBatchRepository>();
+        var batchItemRepository = scope.ServiceProvider.GetRequiredService<ICvUploadBatchItemRepository>();
         var cvFileRepository = scope.ServiceProvider.GetRequiredService<ICvFileRepository>();
         var cvInfoRepository = scope.ServiceProvider.GetRequiredService<ICvInfoRepository>();
-        var cvSkillRepository = scope.ServiceProvider.GetRequiredService<ICvSkillRepository>();
         var cvProcessingClient = scope.ServiceProvider.GetRequiredService<ICvProcessingClient>();
         var fileStorageService = scope.ServiceProvider.GetRequiredService<ICvFileStorageService>();
         var notifier = scope.ServiceProvider.GetRequiredService<IUploadProgressNotifier>();
 
         var batch = await batchRepository.GetByIdAsync(job.BatchId, cancellationToken);
+        var batchItem = await batchItemRepository.GetByIdAsync(
+            job.BatchUploadItemId,
+            cancellationToken);
         var cvFile = await cvFileRepository.GetByIdAsync(job.CvFileId, cancellationToken);
-        if (batch is null || cvFile is null)
+        if (batchItem?.Status is "COMPLETED" or "FAILED")
+        {
+            return;
+        }
+
+        if (batch is null || batchItem is null || cvFile is null)
         {
             await fileStorageService.DeleteAsync(job.FileUrl, cancellationToken);
 
             logger.LogWarning(
-                "Removed orphaned CV upload file because batch or cv file was not found. BatchId: {BatchId}, CvFileId: {CvFileId}",
+                "Removed orphaned CV upload file because batch, item, or cv file was not found. BatchId: {BatchId}, ItemId: {ItemId}, CvFileId: {CvFileId}",
                 job.BatchId,
+                job.BatchUploadItemId,
                 job.CvFileId);
 
             if (batch is not null)
@@ -122,7 +131,25 @@ public sealed class CvUploadBackgroundWorker(
             return;
         }
 
-        if (!await batchRepository.TryStartFileAsync(job.BatchId, cancellationToken))
+        if (batchItem.Status == "QUEUE" &&
+            batch.Status is ("CANCELLING" or "CANCELLED"))
+        {
+            logger.LogInformation(
+                "Cleaning cancelled CV upload job. BatchId: {BatchId}, ItemId: {ItemId}, CvFileId: {CvFileId}, Status: {Status}",
+                job.BatchId,
+                job.BatchUploadItemId,
+                job.CvFileId,
+                batch.Status);
+
+            await HandleCancelledUploadAsync(job, cancellationToken);
+            return;
+        }
+
+        if (batchItem.Status == "QUEUE" &&
+            !await batchRepository.TryStartFileAsync(
+                job.BatchId,
+                job.BatchUploadItemId,
+                cancellationToken))
         {
             var currentStatus = await batchRepository.GetStatusAsync(job.BatchId, cancellationToken);
             if (currentStatus?.Status is "CANCELLING" or "CANCELLED")
@@ -140,11 +167,17 @@ public sealed class CvUploadBackgroundWorker(
             throw new InvalidOperationException(
                 $"Unable to start CV upload job {job.CvFileId} for batch {job.BatchId}.");
         }
+        else if (batchItem.Status != "QUEUE" && batchItem.Status != "PROCESSING")
+        {
+            throw new InvalidOperationException(
+                $"Upload item {job.BatchUploadItemId} has invalid status {batchItem.Status}.");
+        }
 
         await notifier.NotifyAsync(job.BatchId, new
         {
             type = "FILE_STARTED",
             batchId = job.BatchId,
+            itemId = job.BatchUploadItemId,
             fileId = job.CvFileId,
             fileName = job.FileName,
             status = "PROCESSING"
@@ -186,7 +219,6 @@ public sealed class CvUploadBackgroundWorker(
 
             await UpsertCvInfoAsync(
                 cvInfoRepository,
-                cvSkillRepository,
                 job.CvFileId,
                 result,
                 cancellationToken);
@@ -196,12 +228,16 @@ public sealed class CvUploadBackgroundWorker(
                 job.BatchId,
                 job.CvFileId);
 
-            await batchRepository.MarkFileCompletedAsync(job.BatchId, cancellationToken);
+            await batchRepository.MarkFileCompletedAsync(
+                job.BatchId,
+                job.BatchUploadItemId,
+                cancellationToken);
 
             await notifier.NotifyAsync(job.BatchId, new
             {
                 type = "FILE_COMPLETED",
                 batchId = job.BatchId,
+                itemId = job.BatchUploadItemId,
                 fileId = job.CvFileId,
                 fileName = job.FileName,
                 status = "COMPLETED",
@@ -231,12 +267,27 @@ public sealed class CvUploadBackgroundWorker(
     {
         using var cancellationScope = serviceScopeFactory.CreateScope();
         var cleanupService =
-            cancellationScope.ServiceProvider.GetRequiredService<ICvUploadFailureCleanupService>();
+            cancellationScope.ServiceProvider.GetRequiredService<ICvCleanupService>();
 
         await cleanupService.CleanupCancelledAsync(
+            job.BatchUploadItemId,
             job.CvFileId,
             job.FileUrl,
+            "Batch cancelled.",
             cancellationToken);
+
+        var notifier =
+            cancellationScope.ServiceProvider.GetRequiredService<IUploadProgressNotifier>();
+        await notifier.NotifyAsync(job.BatchId, new
+        {
+            type = "FILE_FAILED",
+            batchId = job.BatchId,
+            itemId = job.BatchUploadItemId,
+            fileId = job.CvFileId,
+            fileName = job.FileName,
+            status = "FAILED",
+            errorMessage = "Batch cancelled."
+        }, cancellationToken);
     }
 
     private async Task HandleFailedUploadAsync(
@@ -245,7 +296,7 @@ public sealed class CvUploadBackgroundWorker(
     {
         using var failureScope = serviceScopeFactory.CreateScope();
         var cleanupService =
-            failureScope.ServiceProvider.GetRequiredService<ICvUploadFailureCleanupService>();
+            failureScope.ServiceProvider.GetRequiredService<ICvCleanupService>();
         var batchRepository =
             failureScope.ServiceProvider.GetRequiredService<ICvUploadBatchRepository>();
         var notifier =
@@ -253,14 +304,17 @@ public sealed class CvUploadBackgroundWorker(
 
         await cleanupService.CleanupFailedAsync(
             job.BatchId,
+            job.BatchUploadItemId,
             job.CvFileId,
             job.FileUrl,
+            "Unable to process the CV file.",
             cancellationToken);
 
         await notifier.NotifyAsync(job.BatchId, new
         {
             type = "FILE_FAILED",
             batchId = job.BatchId,
+            itemId = job.BatchUploadItemId,
             fileId = job.CvFileId,
             fileName = job.FileName,
             status = "FAILED",
@@ -277,7 +331,6 @@ public sealed class CvUploadBackgroundWorker(
 
     private static async Task UpsertCvInfoAsync(
         ICvInfoRepository cvInfoRepository,
-        ICvSkillRepository cvSkillRepository,
         long cvFileId,
         Application.DTOS.CvProcessingResult result,
         CancellationToken cancellationToken)
@@ -290,33 +343,34 @@ public sealed class CvUploadBackgroundWorker(
             existingCvInfo = new CvInfo
             {
                 CvFileId = cvFileId,
-                Status = "NOT_FAVORITE",
+                IsMarked = false,
+                Tag = "New",
                 CreatedAt = now
             };
 
             ApplyCvInfoResult(existingCvInfo, result, now);
-            await cvInfoRepository.AddAsync(existingCvInfo, cancellationToken);
         }
         else
         {
             ApplyCvInfoResult(existingCvInfo, result, now);
-            await cvInfoRepository.UpdateAsync(existingCvInfo, cancellationToken);
-            await cvSkillRepository.DeleteByCvInfoIdAsync(existingCvInfo.Id, cancellationToken);
         }
 
-        var cvSkills = result.Skills
-            .Where(skill => !string.IsNullOrWhiteSpace(skill))
-            .Select(skill => new CvSkill
+        var workExperiences = result.WorkExperiences
+            .Select(experience => new CvWorkExperience
             {
-                CvInfoId = existingCvInfo.Id,
-                Name = skill.Trim()
+                Company = experience.Company,
+                Position = experience.Position,
+                Duration = experience.Duration,
+                Responsibility = experience.Responsibility
             })
             .ToArray();
 
-        if (cvSkills.Length > 0)
-        {
-            await cvSkillRepository.AddRangeAsync(cvSkills, cancellationToken);
-        }
+        await cvInfoRepository.UpsertExtractedDataAsync(
+            existingCvInfo,
+            result.Skills,
+            result.Certifications,
+            workExperiences,
+            cancellationToken);
     }
 
     private static void ApplyCvInfoResult(

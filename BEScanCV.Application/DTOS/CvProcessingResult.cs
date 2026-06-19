@@ -18,4 +18,12 @@ public sealed class CvProcessingResult
     public JsonDocument? Educations { get; set; }
     public JsonDocument? ProfileData { get; set; }
     public IReadOnlyCollection<string> Skills { get; set; } = [];
+    public IReadOnlyCollection<string> Certifications { get; set; } = [];
+    public IReadOnlyCollection<CvWorkExperienceResult> WorkExperiences { get; set; } = [];
 }
+
+public sealed record CvWorkExperienceResult(
+    string? Company,
+    string? Position,
+    string? Duration,
+    string? Responsibility);

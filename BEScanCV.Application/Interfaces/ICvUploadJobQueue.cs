@@ -11,6 +11,7 @@ public interface ICvUploadJobQueue
 
 public sealed record CvUploadJob(
     string BatchId,
+    long BatchUploadItemId,
     string RequestId,
     long CvFileId,
     string FileName,

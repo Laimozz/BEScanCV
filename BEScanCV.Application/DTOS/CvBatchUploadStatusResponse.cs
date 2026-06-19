@@ -30,5 +30,7 @@ public sealed class CvBatchUploadStatusResponse
 
     [JsonPropertyName("progress")]
     public int Progress { get; set; }
-}
 
+    [JsonPropertyName("items")]
+    public CvBatchUploadItemResponse[] Items { get; set; } = [];
+}

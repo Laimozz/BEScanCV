@@ -41,8 +41,32 @@ public sealed class CvDetailResponse
     [JsonPropertyName("skills")]
     public string[] Skills { get; set; } = [];
 
-    [JsonPropertyName("status")]
-    public string Status { get; set; } = string.Empty;
+    [JsonPropertyName("certifications")]
+    public string[] Certifications { get; set; } = [];
+
+    [JsonPropertyName("work_experience")]
+    public CvWorkExperienceDto[] WorkExperience { get; set; } = [];
+
+    [JsonPropertyName("is_marked")]
+    public bool IsMarked { get; set; }
+
+    [JsonPropertyName("tag")]
+    public string Tag { get; set; } = string.Empty;
+
+    [JsonPropertyName("work_type")]
+    public string? WorkType { get; set; }
+
+    [JsonPropertyName("note")]
+    public string? Note { get; set; }
+
+    [JsonPropertyName("quality_score")]
+    public double? QualityScore { get; set; }
+
+    [JsonPropertyName("quality_reason")]
+    public string? QualityReason { get; set; }
+
+    [JsonPropertyName("quality_details")]
+    public JsonElement? QualityDetails { get; set; }
 
     [JsonPropertyName("original_file_name")]
     public string OriginalFileName { get; set; } = string.Empty;

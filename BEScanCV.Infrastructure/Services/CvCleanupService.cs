@@ -5,15 +5,17 @@ using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Infrastructure.Services;
 
-public sealed class CvUploadFailureCleanupService(
+public sealed class CvCleanupService(
     BEScanCvDbContext dbContext,
     ICvFileStorageService fileStorageService,
-    ILogger<CvUploadFailureCleanupService> logger) : ICvUploadFailureCleanupService
+    ILogger<CvCleanupService> logger) : ICvCleanupService
 {
     public async Task CleanupFailedAsync(
         string batchId,
+        long batchUploadItemId,
         long cvFileId,
         string filePath,
+        string errorMessage,
         CancellationToken cancellationToken = default)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -32,6 +34,7 @@ public sealed class CvUploadFailureCleanupService(
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        await MarkItemFailedAsync(batchUploadItemId, errorMessage, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         await fileStorageService.DeleteAsync(filePath, cancellationToken);
 
@@ -43,18 +46,43 @@ public sealed class CvUploadFailureCleanupService(
     }
 
     public async Task CleanupCancelledAsync(
+        long batchUploadItemId,
+        long cvFileId,
+        string filePath,
+        string errorMessage,
+        CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        await DeleteCvDataAsync(cvFileId, cancellationToken);
+        await MarkItemFailedAsync(batchUploadItemId, errorMessage, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        await fileStorageService.DeleteAsync(filePath, cancellationToken);
+
+        logger.LogInformation(
+            "Cleaned cancelled CV upload data. CvFileId: {CvFileId}, FilePath: {FilePath}",
+            cvFileId,
+            filePath);
+    }
+
+    public async Task DeleteAsync(
         long cvFileId,
         string filePath,
         CancellationToken cancellationToken = default)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        await DeleteCvDataAsync(cvFileId, cancellationToken);
+        var deletedCvFiles = await DeleteCvDataAsync(cvFileId, cancellationToken);
+        if (deletedCvFiles == 0)
+        {
+            throw new InvalidOperationException($"CV file {cvFileId} was not found.");
+        }
+
         await transaction.CommitAsync(cancellationToken);
         await fileStorageService.DeleteAsync(filePath, cancellationToken);
 
         logger.LogInformation(
-            "Cleaned cancelled CV upload data. CvFileId: {CvFileId}, FilePath: {FilePath}",
+            "Deleted CV data and local file. CvFileId: {CvFileId}, FilePath: {FilePath}",
             cvFileId,
             filePath);
     }
@@ -71,6 +99,14 @@ public sealed class CvUploadFailureCleanupService(
             .Where(cvSkill => cvInfoIds.Contains(cvSkill.CvInfoId))
             .ExecuteDeleteAsync(cancellationToken);
 
+        await dbContext.CvCertifications
+            .Where(certification => cvInfoIds.Contains(certification.CvInfoId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await dbContext.CvWorkExperiences
+            .Where(experience => cvInfoIds.Contains(experience.CvInfoId))
+            .ExecuteDeleteAsync(cancellationToken);
+
         await dbContext.CvInfos
             .Where(cvInfo => cvInfo.CvFileId == cvFileId)
             .ExecuteDeleteAsync(cancellationToken);
@@ -78,5 +114,21 @@ public sealed class CvUploadFailureCleanupService(
         return await dbContext.CvFiles
             .Where(cvFile => cvFile.Id == cvFileId)
             .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    private Task<int> MarkItemFailedAsync(
+        long batchUploadItemId,
+        string errorMessage,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.CvUploadBatchItems
+            .Where(item =>
+                item.Id == batchUploadItemId &&
+                item.Status != "COMPLETED")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.Status, "FAILED")
+                .SetProperty(item => item.ErrorMessage, errorMessage)
+                .SetProperty(item => item.UpdatedAt, DateTime.UtcNow),
+                cancellationToken);
     }
 }

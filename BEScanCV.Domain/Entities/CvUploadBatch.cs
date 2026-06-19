@@ -19,4 +19,7 @@ public sealed class CvUploadBatch
 
     [ForeignKey(nameof(UploadedBy))]
     public User? Uploader { get; set; }
+
+    [InverseProperty(nameof(CvUploadBatchItem.CvUploadBatch))]
+    public ICollection<CvUploadBatchItem> Items { get; set; } = [];
 }

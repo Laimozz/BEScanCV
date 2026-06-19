@@ -126,7 +126,9 @@ public sealed class AiCvProcessingClient(
                 RawText = GetString(root, "raw_text"),
                 Educations = CloneJsonDocument(data, "education_background"),
                 ProfileData = profileData,
-                Skills = ReadSkills(data)
+                Skills = ReadStringArray(data, "skills"),
+                Certifications = ReadStringArray(data, "certifications"),
+                WorkExperiences = ReadWorkExperiences(data)
             };
         }
         catch (JsonException)
@@ -216,23 +218,45 @@ public sealed class AiCvProcessingClient(
         return JsonDocument.Parse(property.GetRawText());
     }
 
-    private static IReadOnlyCollection<string> ReadSkills(JsonElement data)
+    private static IReadOnlyCollection<string> ReadStringArray(
+        JsonElement data,
+        string propertyName)
     {
         if (data.ValueKind != JsonValueKind.Object ||
             !data.TryGetProperty("skills_and_specialties", out var skillsAndSpecialties) ||
             skillsAndSpecialties.ValueKind != JsonValueKind.Object ||
-            !skillsAndSpecialties.TryGetProperty("skills", out var skills) ||
-            skills.ValueKind != JsonValueKind.Array)
+            !skillsAndSpecialties.TryGetProperty(propertyName, out var values) ||
+            values.ValueKind != JsonValueKind.Array)
         {
             return [];
         }
 
-        return skills.EnumerateArray()
-            .Where(skill => skill.ValueKind == JsonValueKind.String)
-            .Select(skill => skill.GetString())
-            .Where(skill => !string.IsNullOrWhiteSpace(skill))
-            .Select(skill => skill!.Trim())
+        return values.EnumerateArray()
+            .Where(value => value.ValueKind == JsonValueKind.String)
+            .Select(value => value.GetString())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IReadOnlyCollection<CvWorkExperienceResult> ReadWorkExperiences(
+        JsonElement data)
+    {
+        if (data.ValueKind != JsonValueKind.Object ||
+            !data.TryGetProperty("work_experience", out var workExperience) ||
+            workExperience.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return workExperience.EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.Object)
+            .Select(item => new CvWorkExperienceResult(
+                GetString(item, "company"),
+                GetString(item, "position"),
+                GetString(item, "duration"),
+                GetString(item, "responsibility")))
             .ToArray();
     }
 

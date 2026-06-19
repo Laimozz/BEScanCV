@@ -23,10 +23,12 @@ public interface ICvUploadBatchRepository
 
     Task<bool> TryStartFileAsync(
         string batchId,
+        long batchUploadItemId,
         CancellationToken cancellationToken = default);
 
     Task MarkFileCompletedAsync(
         string batchId,
+        long batchUploadItemId,
         CancellationToken cancellationToken = default);
 
     Task<CvBatchUploadStatusResponse?> RequestCancellationAsync(

@@ -41,6 +41,129 @@ GET /api/v1/cvs/bulk-upload/{batchId}
 POST /api/v1/cvs/bulk-upload/{batchId}/cancel
 ```
 
+### 4. Update CV information and skills
+
+```http
+PUT /api/v1/cvs/{cvFileId}
+Content-Type: application/json
+```
+
+The request updates `cv_infos` and replaces all rows in `cv_skills` for the CV.
+`profile_data`, `raw_text`, and `ai_document_id` are not editable from this endpoint.
+
+Current editable payload:
+
+```json
+{
+  "full_name": "Nguyen Van A",
+  "email": "a@example.com",
+  "phone": "0123456789",
+  "address": "Ha Noi",
+  "educations": [
+    {
+      "university": "Posts and Telecommunications Institute of Technology"
+    }
+  ],
+  "certifications": [
+    "AWS Certified Developer"
+  ],
+  "work_experience": [
+    {
+      "id": 1,
+      "company": "Example Company",
+      "position": "Backend Developer",
+      "duration": "2024 - Present"
+    }
+  ],
+  "is_marked": true,
+  "note": "Potential candidate"
+}
+```
+
+Only `educations[].university` is patched in the JSONB document. Other education fields
+such as `degree`, `field`, and `graduation_year` are preserved.
+
+`cv_infos` also contains:
+
+```text
+work_type: Remote | Full-time | Part-time
+note: text
+```
+
+### 5. Delete CV
+
+```http
+DELETE /api/v1/cvs/{cvFileId}
+```
+
+The endpoint removes:
+
+```text
+cv_skills -> cv_infos -> cv_files -> local CV file
+```
+
+### 6. AI quality score callback
+
+```http
+POST /api/v1/cvs/quality-score
+Content-Type: application/json
+```
+
+Payload:
+
+```json
+{
+  "cv_id": "ai-document-id",
+  "quality_score": 85.5,
+  "quality_reason": "The CV is complete and relevant.",
+  "quality_details": {
+    "format": 90,
+    "content": 81
+  }
+}
+```
+
+`cv_id` is matched against `cv_files.ai_document_id`. The callback updates:
+
+```text
+cv_infos.quality_score
+cv_infos.quality_reason
+cv_infos.quality_details
+```
+
+### 7. Get AI quality score results
+
+```http
+POST /api/v1/cvs/quality-scores
+Content-Type: application/json
+```
+
+Payload:
+
+```json
+{
+  "cv_ids": [
+    "98e769a1-2f30-4429-a574-350b30cff8cf",
+    "845b21ec-fa9b-4dbc-a9bd-e6bced127b6e"
+  ]
+}
+```
+
+Each `cv_id` is matched against `cv_files.ai_document_id`. Only matching CVs are
+returned, in the same order as the request:
+
+```json
+{
+  "data": [
+    {
+      "cv_id": "98e769a1-2f30-4429-a574-350b30cff8cf",
+      "quality_score": 12.0,
+      "quality_reason": "Candidate has a strong knowledge foundation."
+    }
+  ]
+}
+```
+
 ---
 
 ## WebSocket
@@ -178,8 +301,8 @@ pdf, docx, doc
 Các file chính:
 
 ```text
-BEScanCV.Application/Services/CvUploadService.cs
-BEScanCV.Application/Interfaces/ICvUploadService.cs
+BEScanCV.Application/Services/CvService.cs
+BEScanCV.Application/Interfaces/ICvService.cs
 BEScanCV.Application/Interfaces/ICvUploadJobQueue.cs
 BEScanCV.Application/Interfaces/IUploadProgressNotifier.cs
 BEScanCV.Application/Interfaces/ICvFileStorageService.cs
@@ -187,7 +310,7 @@ BEScanCV.Application/Interfaces/ICvProcessingClient.cs
 BEScanCV.Application/Interfaces/Repositories/ICvUploadBatchRepository.cs
 ```
 
-`CvUploadService` xử lý:
+`CvService` xử lý:
 
 1. Validate request.
 2. Validate tối đa 5 file mỗi chunk.
@@ -533,7 +656,7 @@ bescancv:cv-upload:processing
 
 Queue behavior:
 
-1. `CvUploadService` serializes and pushes each job to the pending Redis List.
+1. `CvService` serializes and pushes each job to the pending Redis List.
 2. `CvUploadBackgroundWorker` atomically moves one job from pending to processing.
 3. After processing succeeds, the worker acknowledges and removes the job from processing.
 4. When processing fails, the backend removes partial database data and the local file before acknowledging the job.

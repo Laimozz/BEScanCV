@@ -9,7 +9,7 @@ namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs")]
-public sealed class CvController(ICvUploadService cvUploadService) : ControllerBase
+public sealed class CvController(ICvService cvService) : ControllerBase
 {
     [HttpPost("bulk-upload")]
     [Consumes("multipart/form-data")]
@@ -33,7 +33,7 @@ public sealed class CvController(ICvUploadService cvUploadService) : ControllerB
 
         try
         {
-            var response = await cvUploadService.BulkUploadAsync(request, cancellationToken);
+            var response = await cvService.BulkUploadAsync(request, cancellationToken);
             response.WebsocketEndpoint = BuildWebSocketEndpoint(response.WebsocketEndpoint);
 
             return Accepted(new ApiResponse<CvBulkUploadResponse>(response)
@@ -67,7 +67,7 @@ public sealed class CvController(ICvUploadService cvUploadService) : ControllerB
         string batchId,
         CancellationToken cancellationToken)
     {
-        var response = await cvUploadService.GetBatchStatusAsync(batchId, cancellationToken);
+        var response = await cvService.GetBatchStatusAsync(batchId, cancellationToken);
         if (response is null)
         {
             return NotFound(new ApiResponse<CvBatchUploadStatusResponse>(null)
@@ -88,10 +88,118 @@ public sealed class CvController(ICvUploadService cvUploadService) : ControllerB
     {
         try
         {
-            var response = await cvUploadService.CancelBatchAsync(batchId, cancellationToken);
+            var response = await cvService.CancelBatchAsync(batchId, cancellationToken);
             return Ok(new ApiResponse<CvBatchCancelResponse>(response)
             {
                 Message = "Batch cancellation requested."
+            });
+        }
+        catch (CvUploadValidationException ex)
+        {
+            return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
+            {
+                Message = ex.Message,
+                Success = false,
+                StatusCode = ex.StatusCode
+            });
+        }
+    }
+
+    [HttpPut("{cvFileId:long}")]
+    public async Task<ActionResult<ApiResponse<CvUpdateResponse>>> UpdateCv(
+        long cvFileId,
+        [FromBody] CvUpdateRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await cvService.UpdateAsync(
+                cvFileId,
+                request,
+                cancellationToken);
+
+            return Ok(new ApiResponse<CvUpdateResponse>(response)
+            {
+                Message = "CV updated successfully."
+            });
+        }
+        catch (CvUploadValidationException ex)
+        {
+            return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
+            {
+                Message = ex.Message,
+                Success = false,
+                StatusCode = ex.StatusCode
+            });
+        }
+    }
+
+    [HttpDelete("{cvFileId:long}")]
+    public async Task<ActionResult<ApiResponse<object>>> DeleteCv(
+        long cvFileId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cvService.DeleteAsync(cvFileId, cancellationToken);
+
+            return Ok(new ApiResponse<object>(null)
+            {
+                Message = "CV deleted successfully."
+            });
+        }
+        catch (CvUploadValidationException ex)
+        {
+            return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
+            {
+                Message = ex.Message,
+                Success = false,
+                StatusCode = ex.StatusCode
+            });
+        }
+    }
+
+    [HttpPost("quality-score")]
+    public async Task<ActionResult<ApiResponse<object>>> UpdateQualityScore(
+        [FromBody] CvQualityScoreRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cvService.UpdateQualityScoreAsync(
+                request,
+                cancellationToken);
+
+            return Ok(new ApiResponse<object>(null)
+            {
+                Message = "CV quality score updated successfully."
+            });
+        }
+        catch (CvUploadValidationException ex)
+        {
+            return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
+            {
+                Message = ex.Message,
+                Success = false,
+                StatusCode = ex.StatusCode
+            });
+        }
+    }
+
+    [HttpPost("quality-scores")]
+    public async Task<ActionResult<CvQualityScoresResponse>> GetQualityScores(
+        [FromBody] CvQualityScoresRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await cvService.GetQualityScoresAsync(
+                request,
+                cancellationToken);
+
+            return Ok(new CvQualityScoresResponse
+            {
+                Data = response
             });
         }
         catch (CvUploadValidationException ex)

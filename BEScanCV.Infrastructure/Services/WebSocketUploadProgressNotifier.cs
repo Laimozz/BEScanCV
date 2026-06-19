@@ -45,6 +45,30 @@ public sealed class WebSocketUploadProgressNotifier(
                 }
             }
         }
+        catch (OperationCanceledException) when (
+            cancellationToken.IsCancellationRequested ||
+            webSocket.State is WebSocketState.Aborted or WebSocketState.Closed)
+        {
+            logger.LogDebug(
+                "Upload WebSocket request was cancelled. BatchId: {BatchId}, ConnectionId: {ConnectionId}",
+                batchId,
+                connectionId);
+        }
+        catch (ObjectDisposedException)
+        {
+            logger.LogDebug(
+                "Upload WebSocket was disposed by the client. BatchId: {BatchId}, ConnectionId: {ConnectionId}",
+                batchId,
+                connectionId);
+        }
+        catch (WebSocketException ex)
+        {
+            logger.LogDebug(
+                ex,
+                "Upload WebSocket connection ended unexpectedly. BatchId: {BatchId}, ConnectionId: {ConnectionId}",
+                batchId,
+                connectionId);
+        }
         finally
         {
             batchConnections.TryRemove(connectionId, out _);
@@ -53,12 +77,26 @@ public sealed class WebSocketUploadProgressNotifier(
                 _connections.TryRemove(batchId, out _);
             }
 
-            if (webSocket.State is WebSocketState.Open or WebSocketState.CloseReceived)
+            try
             {
-                await webSocket.CloseAsync(
-                    WebSocketCloseStatus.NormalClosure,
-                    "Closed",
-                    CancellationToken.None);
+                if (webSocket.State is WebSocketState.Open or WebSocketState.CloseReceived)
+                {
+                    await webSocket.CloseAsync(
+                        WebSocketCloseStatus.NormalClosure,
+                        "Closed",
+                        CancellationToken.None);
+                }
+            }
+            catch (Exception ex) when (
+                ex is OperationCanceledException or
+                    ObjectDisposedException or
+                    WebSocketException)
+            {
+                logger.LogDebug(
+                    ex,
+                    "Upload WebSocket was already closed. BatchId: {BatchId}, ConnectionId: {ConnectionId}",
+                    batchId,
+                    connectionId);
             }
         }
     }

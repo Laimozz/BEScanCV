@@ -11,7 +11,7 @@ public static class DependencyInjection
         services.AddScoped<ICvSearchService, CvSearchService>();
         services.AddScoped<ICvGetAllService, CvGetAllService>();
         services.AddScoped<ICvDetailService, CvDetailService>();
-        services.AddScoped<ICvUploadService, CvUploadService>();
+        services.AddScoped<ICvService, CvService>();
 
         return services;
     }
