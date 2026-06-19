@@ -13,12 +13,14 @@ public sealed class UserRepository(BEScanCvDbContext dbContext) : IUserRepositor
             .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
     }
 
-    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
-    {
-        return dbContext.Users
-            .FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
-    }
-
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken ct)
+{
+    Console.WriteLine($"[DEBUG] Looking up email: '{email}'"); // Add this
+    var result = await dbContext.Users
+        .FirstOrDefaultAsync(user => user.Email == email, ct);
+    Console.WriteLine($"[DEBUG] Found user: {result?.Id ?? 0}"); // Add this
+    return result;
+}
     public async Task<(IReadOnlyList<User> Items, int TotalCount)> GetAllAsync(
         int page,
         int pageSize,

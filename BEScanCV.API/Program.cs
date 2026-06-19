@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using BEScanCV.Application.Interfaces;
+using BEScanCV.API.Extensions;
 using Resend;
+using Microsoft.OpenApi;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,8 +48,28 @@ builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddControllers();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddJwtAuthentication(builder.Configuration);
+
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "BEScanCV API", Version = "v1" });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter your JWT token. Example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'"
+    });
+
+    options.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", hostDocument: doc)] = new List<string>()
+    });
+});
 
 // Problem with Resend: can only send mails to API key owner (trannguyenphuc1902@gmail.com)
 // Problem with Postmark: have to verify domain
@@ -96,6 +119,7 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/files"
 });
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

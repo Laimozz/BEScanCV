@@ -45,6 +45,7 @@ public static class DependencyInjection
 
         services.AddScoped<ISearchQueryParser, AiSearchQueryParserClient>();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddScoped<IJwtService, JwtService>();
 
         return services;
     }

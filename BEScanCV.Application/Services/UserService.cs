@@ -2,11 +2,14 @@ using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
+using System.Security.Cryptography;
 
 namespace BEScanCV.Application.Services;
 
 public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService) : IUserService
 {
+    private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$?-";
+
     private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
     {
         "Admin", "Recruiter", "Interviewer"
@@ -66,13 +69,7 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new ArgumentException("Email is required.");
 
-        if (string.IsNullOrWhiteSpace(request.Password))
-            throw new ArgumentException("Password is required.");
-
-        if (request.Password != request.ConfirmPassword)
-            throw new ArgumentException("Password and confirm password do not match.");
-                // TODO: Auto generate password
-
+        var temporaryPassword = GenerateTemporaryPassword();
 
         if (!string.IsNullOrWhiteSpace(request.Role) && !ValidRoles.Contains(request.Role))
             throw new ArgumentException($"Invalid role. Allowed values: {string.Join(", ", ValidRoles)}");
@@ -80,21 +77,20 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         var emailExists = await userRepository.ExistsByEmailAsync(request.Email, cancellationToken);
         if (emailExists)
             throw new InvalidOperationException("Email already exists");
-                // TODO: Auto generate password
 
 
         var user = new User
         {
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
-            PasswordHash = passwordHasher.Hash(request.Password),
+            PasswordHash = passwordHasher.Hash(temporaryPassword),
             Role = string.IsNullOrWhiteSpace(request.Role) ? "Recruiter" : request.Role,
             Status = "Active",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         await userRepository.AddAsync(user, cancellationToken);
-        await emailService.SendAccountCreatedEmailAsync(request.Email, passwordHasher.Hash(request.Password));
+        await emailService.SendAccountCreatedEmailAsync(request.Email, temporaryPassword);
 
         return new CreateUserResponse { Id = user.Id };
     }
@@ -170,4 +166,13 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
 
         await userRepository.UpdateAsync(user, cancellationToken);
     }
+
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+        => userRepository.GetByEmailAsync(email, cancellationToken);
+
+    public bool VerifyPassword(string password, string passwordHash)
+        => passwordHasher.Verify(password, passwordHash);
+
+    private static string GenerateTemporaryPassword()
+        => RandomNumberGenerator.GetString(TemporaryPasswordCharacters, 16);
 }

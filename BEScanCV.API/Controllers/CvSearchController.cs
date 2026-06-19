@@ -2,12 +2,14 @@ using BEScanCV.API.Common;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs/search")]
+[Authorize]
 public sealed class CvSearchController(ICvSearchService cvSearchService) : ControllerBase
 {
     [HttpPost]
