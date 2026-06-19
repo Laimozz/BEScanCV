@@ -1,5 +1,7 @@
 using BEScanCV.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using System.Text.Json;
 
 namespace BEScanCV.Infrastructure.Data;
 
@@ -17,6 +19,11 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Value converter cho JsonDocument — cần thiết khi dùng InMemory provider
+        var jsonDocConverter = new ValueConverter<JsonDocument?, string?>(
+            v => v == null ? null : v.RootElement.GetRawText(),
+            v => v == null ? null : JsonDocument.Parse(v));
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.ToTable("users");
@@ -86,7 +93,8 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             entity.Property(e => e.DateOfBirth).HasColumnName("date_of_birth");
             entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(500);
             entity.Property(e => e.Summary).HasColumnName("summary").HasColumnType("text");
-            entity.Property(e => e.Educations).HasColumnName("educations").HasColumnType("jsonb");
+            entity.Property(e => e.Educations).HasColumnName("educations").HasColumnType("jsonb")
+                  .HasConversion(jsonDocConverter);
             entity.Property(e => e.RawText).HasColumnName("raw_text").HasColumnType("text");
             entity.Property(e => e.ProfileData).HasColumnName("profile_data").HasColumnType("jsonb");
             entity.Property(e => e.QualityScore).HasColumnName("quality_score");
