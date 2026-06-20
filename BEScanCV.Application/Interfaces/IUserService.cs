@@ -7,7 +7,7 @@ public interface IUserService
 {
     Task<GetUsersResponse> GetUsersAsync(
         int page,
-        int pageSize,
+        int limit,
         string? role,
         string? status,
         CancellationToken cancellationToken = default);
