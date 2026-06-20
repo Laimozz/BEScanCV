@@ -59,11 +59,11 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
     KnownIPNetworks = { },
     KnownProxies = { }
 });
-
+app.UseCors(allOriginsPolicy);
 app.UseHttpsRedirection();
 
 // 3. Kích hoạt CORS Middleware
-app.UseCors(allOriginsPolicy);
+
 
 // 4. Serve file PDF từ D:\PDFLocal dưới route /files
 //    FE truy cập: http://<BE_IP>:<port>/files/<ten-file>.pdf
