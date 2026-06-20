@@ -13,7 +13,8 @@ public sealed class ResendEmailService : IEmailService
 
     public async Task SendAccountCreatedEmailAsync(
         string recipientEmail,
-        string temporaryPassword)   
+        string temporaryPassword,
+        CancellationToken cancellationToken = default)   
     {
         var message = new EmailMessage
         {

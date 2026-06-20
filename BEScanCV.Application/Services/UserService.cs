@@ -69,7 +69,8 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new ArgumentException("Email is required.");
 
-        var temporaryPassword = GenerateTemporaryPassword();
+        var password = GeneratePassword(8);
+
 
         if (!string.IsNullOrWhiteSpace(request.Role) && !ValidRoles.Contains(request.Role))
             throw new ArgumentException($"Invalid role. Allowed values: {string.Join(", ", ValidRoles)}");
@@ -83,14 +84,14 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         {
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
-            PasswordHash = passwordHasher.Hash(temporaryPassword),
+            PasswordHash = passwordHasher.Hash(password),
             Role = string.IsNullOrWhiteSpace(request.Role) ? "Recruiter" : request.Role,
             Status = "Active",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         await userRepository.AddAsync(user, cancellationToken);
-        await emailService.SendAccountCreatedEmailAsync(request.Email, temporaryPassword);
+        await emailService.SendAccountCreatedEmailAsync(request.Email, password);
 
         return new CreateUserResponse { Id = user.Id };
     }
@@ -173,6 +174,11 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
     public bool VerifyPassword(string password, string passwordHash)
         => passwordHasher.Verify(password, passwordHash);
 
-    private static string GenerateTemporaryPassword()
-        => RandomNumberGenerator.GetString(TemporaryPasswordCharacters, 16);
+    private static string GeneratePassword(int length)
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        return new string(Enumerable.Range(0, length)
+            .Select(_ => chars[Random.Shared.Next(chars.Length)])
+            .ToArray());
+    }
 }

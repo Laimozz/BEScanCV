@@ -115,9 +115,19 @@ public sealed class CvSearchService(
             "education" or "educations" => IsJsonTextMatched(normalizedValue, cv.Educations),
             "createdat" => IsTextMatched(normalizedValue, cv.CreatedAt.ToString("O", CultureInfo.InvariantCulture)),
             "updatedat" => IsTextMatched(normalizedValue, cv.UpdatedAt.ToString("O", CultureInfo.InvariantCulture)),
-            "status" => IsTextMatched(normalizedValue, cv.Status),
+            "ismarked" => IsBoolMatched(value, cv.IsMarked),
+            "tag" => IsTextMatched(normalizedValue, cv.Tag),
+            "worktype" => IsTextMatched(normalizedValue, cv.WorkType),
+            "note" => IsTextMatched(normalizedValue, cv.Note),
             "uploadedby" => IsExactNumberMatched(value, cv.CvFile?.UploadedBy),
             "skill" or "skills" or "skillname" => cv.CvSkills.Any(cvSkill => IsTextMatched(normalizedValue, cvSkill.Name)),
+            "certification" or "certifications" => cv.CvCertifications.Any(
+                certification => IsTextMatched(normalizedValue, certification.Name)),
+            "workexperience" or "company" => cv.WorkExperiences.Any(
+                experience =>
+                    IsTextMatched(normalizedValue, experience.Company) ||
+                    IsTextMatched(normalizedValue, experience.Position) ||
+                    IsTextMatched(normalizedValue, experience.Responsibility)),
             "exp" or "experience" or "totalexperienceyears" => IsMinimumIntMatched(value, cv.TotalExperienceYears),
             _ => false
         };
@@ -167,6 +177,11 @@ public sealed class CvSearchService(
         return candidate is not null &&
             int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) &&
             candidate.Value >= number;
+    }
+
+    private static bool IsBoolMatched(string value, bool candidate)
+    {
+        return bool.TryParse(value, out var parsed) && candidate == parsed;
     }
 
     private static CvSearchResultDto CreateResult(CvInfo cv, string[] candidateSkills, string requestBaseUrl)

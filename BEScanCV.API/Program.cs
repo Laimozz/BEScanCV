@@ -1,6 +1,7 @@
 using BEScanCV.Application;
 using BEScanCV.Infrastructure;
 using BEScanCV.Infrastructure.Data;
+using BEScanCV.Infrastructure.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -27,26 +28,8 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add email service (Resend)
-
-var apiKey = builder.Configuration.GetSection("Resend")["ApiKey"];
-
-Console.WriteLine(apiKey);
-
-builder.Services.Configure<ResendClientOptions>(o =>
-{
-    o.ApiToken = apiKey;
-});
-builder.Services.AddHttpClient<IResend, ResendClient>();
-builder.Services.AddScoped<IEmailService, ResendEmailService>();
-
-
-// Add email service(Postmark)
-// builder.Services.Configure<PostmarkSettings>(
-// builder.Configuration.GetSection("Postmark"));
-// builder.Services.AddScoped<IEmailService, PostmarkEmailService>();
 builder.Services.AddControllers();
-builder.Services.AddApplication();
+builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
@@ -71,15 +54,16 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Problem with Resend: can only send mails to API key owner (trannguyenphuc1902@gmail.com)
-// Problem with Postmark: have to verify domain
-
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<BEScanCvDbContext>();
-    dbContext.Database.Migrate();
+    var useInMemory = builder.Configuration.GetValue<bool>("UseInMemoryDb");
+    if (useInMemory)
+        dbContext.Database.EnsureCreated(); // InMemory: tạo schema trong RAM
+    else
+        dbContext.Database.Migrate();
 }
 
 // Configure the HTTP request pipeline.
@@ -106,6 +90,7 @@ app.UseHttpsRedirection();
 
 // 3. Kích hoạt CORS Middleware
 app.UseCors(allOriginsPolicy);
+app.UseWebSockets();
 
 // 4. Serve file PDF từ D:\PDFLocal dưới route /files
 //    FE truy cập: http://<BE_IP>:<port>/files/<ten-file>.pdf
@@ -116,11 +101,26 @@ if (!Directory.Exists(localPdfFolder))
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(localPdfFolder),
-    RequestPath = "/files"
+    RequestPath = "/files",
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append(
+            "Access-Control-Allow-Origin",
+            "*"
+        );
+    }
 });
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.Map("/ws/upload-progress/{batchId}", async (
+    HttpContext httpContext,
+    string batchId,
+    WebSocketUploadProgressNotifier notifier) =>
+{
+    await notifier.HandleClientAsync(httpContext, batchId, httpContext.RequestAborted);
+});
 
 app.MapControllers();
 
