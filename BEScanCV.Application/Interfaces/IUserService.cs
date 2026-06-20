@@ -1,4 +1,5 @@
 using BEScanCV.Application.DTOS;
+using BEScanCV.Domain.Entities;
 
 namespace BEScanCV.Application.Interfaces;
 
@@ -28,4 +29,7 @@ public interface IUserService
         long userId,
         ChangePasswordRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
+    bool VerifyPassword(string password, string passwordHash);
 }

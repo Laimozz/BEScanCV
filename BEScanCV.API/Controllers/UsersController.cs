@@ -1,12 +1,14 @@
 using BEScanCV.API.Common;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/users")]
+[Authorize]
 public sealed class UsersController(IUserService userService) : ControllerBase
 {
     /// <summary>

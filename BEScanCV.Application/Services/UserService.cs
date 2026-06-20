@@ -2,11 +2,14 @@ using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
+using System.Security.Cryptography;
 
 namespace BEScanCV.Application.Services;
 
 public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService) : IUserService
 {
+    private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$?-";
+
     private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
     {
         "Admin", "Recruiter", "Interviewer"
@@ -75,7 +78,6 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         var emailExists = await userRepository.ExistsByEmailAsync(request.Email, cancellationToken);
         if (emailExists)
             throw new InvalidOperationException("Email already exists");
-                // TODO: Auto generate password
 
 
         var user = new User
@@ -165,6 +167,12 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
 
         await userRepository.UpdateAsync(user, cancellationToken);
     }
+
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+        => userRepository.GetByEmailAsync(email, cancellationToken);
+
+    public bool VerifyPassword(string password, string passwordHash)
+        => passwordHasher.Verify(password, passwordHash);
 
     private static string GeneratePassword(int length)
     {
