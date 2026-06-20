@@ -26,21 +26,13 @@ public sealed class CvFileRepository(BEScanCvDbContext dbContext) : ICvFileRepos
 
     public async Task AddAsync(CvFile cvFile, CancellationToken cancellationToken = default)
     {
-        NormalizeDateTimes(cvFile);
         await dbContext.CvFiles.AddAsync(cvFile, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(CvFile cvFile, CancellationToken cancellationToken = default)
     {
-        NormalizeDateTimes(cvFile);
         dbContext.CvFiles.Update(cvFile);
         await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    private static void NormalizeDateTimes(CvFile cvFile)
-    {
-        cvFile.CreatedAt = DateTimeUtcNormalizer.Normalize(cvFile.CreatedAt);
-        cvFile.UpdatedAt = DateTimeUtcNormalizer.Normalize(cvFile.UpdatedAt);
     }
 }

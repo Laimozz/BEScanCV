@@ -65,33 +65,14 @@ public sealed class CvDetailService(ICvInfoRepository cvInfoRepository) : ICvDet
             Address = cv.Address,
             Summary = cv.Summary,
             Educations = cv.Educations?.RootElement.Clone(),
+            ProfileData = cv.ProfileData?.RootElement.Clone(),
+            RawText = cv.RawText,
             Skills = cv.CvSkills
                 .Select(s => s.Name)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
-            Certifications = cv.CvCertifications
-                .Select(certification => certification.Name)
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray(),
-            WorkExperience = cv.WorkExperiences
-                .Select(experience => new CvWorkExperienceDto
-                {
-                    Id = experience.Id,
-                    Company = experience.Company,
-                    Position = experience.Position,
-                    Duration = experience.Duration,
-                    Responsibility = experience.Responsibility
-                })
-                .ToArray(),
-            IsMarked = cv.IsMarked,
-            Tag = cv.Tag,
-            WorkType = cv.WorkType,
-            Note = cv.Note,
-            QualityScore = cv.QualityScore,
-            QualityReason = cv.QualityReason,
-            QualityDetails = cv.QualityDetails?.RootElement.Clone(),
+            Status = cv.Status,
             OriginalFileName = cvFile?.OriginalFileName ?? string.Empty,
             FileType = cvFile?.FileType ?? string.Empty,
             FileSize = cvFile?.FileSize ?? 0,

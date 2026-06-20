@@ -16,9 +16,6 @@ public sealed class User
     [InverseProperty(nameof(CvFile.Uploader))]
     public ICollection<CvFile> CvFiles { get; set; } = [];
 
-    [InverseProperty(nameof(CvUploadBatch.Uploader))]
-    public ICollection<CvUploadBatch> CvUploadBatches { get; set; } = [];
-
     [InverseProperty(nameof(RefreshToken.User))]
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 }

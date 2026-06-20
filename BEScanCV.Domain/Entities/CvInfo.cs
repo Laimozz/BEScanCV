@@ -18,25 +18,13 @@ public sealed class CvInfo
     public JsonDocument? Educations { get; set; }
     public string? RawText { get; set; }
     public JsonDocument? ProfileData { get; set; }
-    public double? QualityScore { get; set; }
-    public string? QualityReason { get; set; }
-    public JsonDocument? QualityDetails { get; set; }
-    public bool IsMarked { get; set; }
-    public string Tag { get; set; } = "New";
-    public string? WorkType { get; set; }
-    public string? Note { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public string Status { get; set; } = "Active";
 
     [ForeignKey(nameof(CvFileId))]
     public CvFile? CvFile { get; set; }
 
     [InverseProperty(nameof(CvSkill.CvInfo))]
     public ICollection<CvSkill> CvSkills { get; set; } = [];
-
-    [InverseProperty(nameof(CvCertification.CvInfo))]
-    public ICollection<CvCertification> CvCertifications { get; set; } = [];
-
-    [InverseProperty(nameof(CvWorkExperience.CvInfo))]
-    public ICollection<CvWorkExperience> WorkExperiences { get; set; } = [];
 }
