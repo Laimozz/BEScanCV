@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 
 namespace BEScanCV.Application.Services;
 
-public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService) : IUserService
+public sealed class UserService(IUserRepository userRepository, IHasher passwordHasher, IEmailService emailService) : IUserService
 {
     private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$?-";
 

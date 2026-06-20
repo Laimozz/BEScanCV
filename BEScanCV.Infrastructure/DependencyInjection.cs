@@ -73,7 +73,7 @@ public static class DependencyInjection
         services.AddScoped<ICvUploadBatchItemRepository, CvUploadBatchItemRepository>();
 
         services.AddScoped<ISearchQueryParser, AiSearchQueryParserClient>();
-        services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddSingleton<IHasher, BcryptHasher>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<ICvFileStorageService, LocalCvFileStorageService>();
         services.AddScoped<ICvProcessingClient, AiCvProcessingClient>();
