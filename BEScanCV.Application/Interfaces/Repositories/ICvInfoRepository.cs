@@ -6,13 +6,27 @@ public interface ICvInfoRepository
 {
     Task<CvInfo?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
     Task<CvInfo?> GetByCvFileIdAsync(long cvFileId, CancellationToken cancellationToken = default);
+    Task<CvInfo?> GetByCvFileIdAndUploaderAsync(
+        long cvFileId,
+        long uploadedBy,
+        CancellationToken cancellationToken = default);
     Task<CvInfo?> GetByAiDocumentIdAsync(
         string aiDocumentId,
         CancellationToken cancellationToken = default);
+    Task<CvInfo?> GetByAiDocumentIdAsync(
+        string aiDocumentId,
+        long uploadedBy,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<CvInfo>> GetByAiDocumentIdsAsync(
         IReadOnlyCollection<string> aiDocumentIds,
+        long uploadedBy,
         CancellationToken cancellationToken = default);
-    Task<IReadOnlyCollection<CvInfo>> GetWithSkillsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<CvInfo>> GetWithSkillsAsync(
+        long uploadedBy,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<CvInfo>> GetFavoritesAsync(
+        long uploadedBy,
+        CancellationToken cancellationToken = default);
     Task AddAsync(CvInfo cvInfo, CancellationToken cancellationToken = default);
     Task UpdateAsync(CvInfo cvInfo, CancellationToken cancellationToken = default);
     Task UpdateEditableDataAsync(

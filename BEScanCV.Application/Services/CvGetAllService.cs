@@ -9,12 +9,18 @@ namespace BEScanCV.Application.Services;
 
 public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGetAllService
 {
-    public async Task<CvGetAllResponse> CvGetAllAsync(CvGetAllRequest request, string requestBaseUrl, CancellationToken cancellationToken = default)
+    public async Task<CvGetAllResponse> CvGetAllAsync(
+        CvGetAllRequest request,
+        string requestBaseUrl,
+        long uploadedBy,
+        CancellationToken cancellationToken = default)
     {
         var page = NormalizePage(request.Page);
         var limit = request.Limit > 0 ? request.Limit : 10;
 
-        var cvs = await cvInfoRepository.GetWithSkillsAsync(cancellationToken);
+        var cvs = await cvInfoRepository.GetWithSkillsAsync(
+            uploadedBy,
+            cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {

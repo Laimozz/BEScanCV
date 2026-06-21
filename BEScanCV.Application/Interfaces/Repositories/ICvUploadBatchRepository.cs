@@ -42,4 +42,5 @@ public interface ICvUploadBatchRepository
     Task<CvBatchUploadStatusResponse?> GetStatusAsync(
         string batchId,
         CancellationToken cancellationToken = default);
+
 }

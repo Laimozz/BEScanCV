@@ -13,12 +13,16 @@ public sealed class CvDetailService(ICvInfoRepository cvInfoRepository) : ICvDet
     public async Task<CvDetailResponse?> GetByCvFileIdAsync(
         long cvFileId,
         string requestBaseUrl,
+        long uploadedBy,
         CancellationToken cancellationToken = default)
     {
         if (cvFileId <= 0)
             throw new ArgumentException("cv_file_id is invalid.", nameof(cvFileId));
 
-        var cv = await cvInfoRepository.GetByCvFileIdAsync(cvFileId, cancellationToken);
+        var cv = await cvInfoRepository.GetByCvFileIdAndUploaderAsync(
+            cvFileId,
+            uploadedBy,
+            cancellationToken);
         if (cv is null)
             return null;
 

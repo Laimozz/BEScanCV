@@ -29,6 +29,25 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
             .FirstOrDefaultAsync(cvInfo => cvInfo.CvFileId == cvFileId, cancellationToken);
     }
 
+    public Task<CvInfo?> GetByCvFileIdAndUploaderAsync(
+        long cvFileId,
+        long uploadedBy,
+        CancellationToken cancellationToken = default)
+    {
+        return dbContext.CvInfos
+            .Include(cvInfo => cvInfo.CvFile)
+                .ThenInclude(cvFile => cvFile!.Uploader)
+            .Include(cvInfo => cvInfo.CvSkills)
+            .Include(cvInfo => cvInfo.CvCertifications)
+            .Include(cvInfo => cvInfo.WorkExperiences)
+            .FirstOrDefaultAsync(
+                cvInfo =>
+                    cvInfo.CvFileId == cvFileId &&
+                    cvInfo.CvFile != null &&
+                    cvInfo.CvFile.UploadedBy == uploadedBy,
+                cancellationToken);
+    }
+
     public Task<CvInfo?> GetByAiDocumentIdAsync(
         string aiDocumentId,
         CancellationToken cancellationToken = default)
@@ -41,29 +60,71 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
                 cancellationToken);
     }
 
+    public Task<CvInfo?> GetByAiDocumentIdAsync(
+        string aiDocumentId,
+        long uploadedBy,
+        CancellationToken cancellationToken = default)
+    {
+        return dbContext.CvInfos
+            .Include(cvInfo => cvInfo.CvFile)
+            .FirstOrDefaultAsync(
+                cvInfo => cvInfo.CvFile != null &&
+                          cvInfo.CvFile.AiDocumentId == aiDocumentId &&
+                          cvInfo.CvFile.UploadedBy == uploadedBy,
+                cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<CvInfo>> GetByAiDocumentIdsAsync(
         IReadOnlyCollection<string> aiDocumentIds,
+        long uploadedBy,
         CancellationToken cancellationToken = default)
     {
         return await dbContext.CvInfos
             .AsNoTracking()
             .Include(cvInfo => cvInfo.CvFile)
+            .Include(cvInfo => cvInfo.CvSkills)
+            .Include(cvInfo => cvInfo.CvCertifications)
+            .Include(cvInfo => cvInfo.WorkExperiences)
             .Where(cvInfo =>
                 cvInfo.CvFile != null &&
                 cvInfo.CvFile.AiDocumentId != null &&
+                cvInfo.CvFile.UploadedBy == uploadedBy &&
                 aiDocumentIds.Contains(cvInfo.CvFile.AiDocumentId))
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyCollection<CvInfo>> GetWithSkillsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<CvInfo>> GetWithSkillsAsync(
+        long uploadedBy,
+        CancellationToken cancellationToken = default)
     {
         return await dbContext.CvInfos
             .AsNoTracking()
+            .Where(cvInfo =>
+                cvInfo.CvFile != null &&
+                cvInfo.CvFile.UploadedBy == uploadedBy)
             .Include(cvInfo => cvInfo.CvFile)
                 .ThenInclude(cvFile => cvFile!.Uploader)
             .Include(cvInfo => cvInfo.CvSkills)
             .Include(cvInfo => cvInfo.CvCertifications)
             .Include(cvInfo => cvInfo.WorkExperiences)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<CvInfo>> GetFavoritesAsync(
+        long uploadedBy,
+        CancellationToken cancellationToken = default)
+    {
+        return await dbContext.CvInfos
+            .AsNoTracking()
+            .Where(cvInfo =>
+                cvInfo.IsMarked &&
+                cvInfo.CvFile != null &&
+                cvInfo.CvFile.UploadedBy == uploadedBy)
+            .Include(cvInfo => cvInfo.CvFile)
+            .Include(cvInfo => cvInfo.CvSkills)
+            .Include(cvInfo => cvInfo.CvCertifications)
+            .Include(cvInfo => cvInfo.WorkExperiences)
+            .OrderBy(cvInfo => cvInfo.Id)
             .ToListAsync(cancellationToken);
     }
 

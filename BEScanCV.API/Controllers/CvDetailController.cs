@@ -1,4 +1,5 @@
 using BEScanCV.API.Common;
+using BEScanCV.API.Extensions;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +20,15 @@ public sealed class CvDetailController(ICvDetailService cvDetailService) : Contr
         long cvFileId,
         CancellationToken cancellationToken)
     {
+        var uploadedBy = User.GetCurrentUserId();
+        if (uploadedBy is null)
+            return Unauthorized(new ApiResponse<object>(null)
+            {
+                Message = "Authenticated user is required.",
+                Success = false,
+                StatusCode = StatusCodes.Status401Unauthorized
+            });
+
         if (cvFileId <= 0)
             return BadRequest(new ApiResponse<CvDetailResponse>(null)
             {
@@ -30,6 +40,7 @@ public sealed class CvDetailController(ICvDetailService cvDetailService) : Contr
         var cv = await cvDetailService.GetByCvFileIdAsync(
             cvFileId,
             GetRequestBaseUrl(),
+            uploadedBy.Value,
             cancellationToken);
 
         if (cv is null)
