@@ -108,8 +108,11 @@ public sealed class CvGetAllService(
 
     private static bool MatchesFilter(CvInfo cv, CvGetAllFilterDto filter)
     {
-        if (filter.TotalExperienceYears.HasValue &&
-            (!cv.TotalExperienceYears.HasValue || cv.TotalExperienceYears.Value < filter.TotalExperienceYears.Value))
+        if (!MatchesExperience(cv.TotalExperienceYears, filter.TotalExperienceYears))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(filter.Location) &&
+            (string.IsNullOrWhiteSpace(cv.Address) || !Normalize(cv.Address).Contains(Normalize(filter.Location))))
         {
             return false;
         }
@@ -141,5 +144,24 @@ public sealed class CvGetAllService(
         }
 
         return true;
+    }
+
+    private static bool MatchesExperience(int? cvExperience, int? filterValue)
+    {
+        if (!filterValue.HasValue || !cvExperience.HasValue)
+            return true;
+
+        return filterValue.Value switch
+        {
+            0 => cvExperience.Value <= 1,
+            1 => cvExperience.Value >= 1 && cvExperience.Value <= 3,
+            3 => cvExperience.Value >= 3 && cvExperience.Value <= 5,
+            5 => cvExperience.Value >= 5,
+            _ => true
+//    - A value of 0 should query for experience <= 1.
+//    - A value of 1 should query for experience between 1 and 3.
+//    - A value of 3 should query for experience between 3 and 5.
+//    - A value of 5 should query for experience >= 5.
+        };
     }
 }
