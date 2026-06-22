@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using BEScanCV.Application.DTOS;
@@ -19,14 +20,12 @@ public sealed class AiSemanticSearchClient(
 
     public async Task<IReadOnlyCollection<AiSemanticSearchResult>> SearchAsync(
         CvSemanticSearchRequest request,
-        long userId,
         CancellationToken cancellationToken = default)
     {
         var aiRequest = new AiSemanticSearchRequest
         {
             Query = request.Query,
-            TopK = request.TopK,
-            UserId = userId
+            TopK = request.TopK
         };
 
         using var httpRequest = new HttpRequestMessage(
@@ -41,28 +40,59 @@ public sealed class AiSemanticSearchClient(
             httpRequest.Headers.Add("X-API-Key", _options.ApiKey);
         }
 
-        using var response = await httpClient.SendAsync(
-            httpRequest,
-            cancellationToken);
-        var responseBody = await response.Content.ReadAsStringAsync(
-            cancellationToken);
+        HttpResponseMessage response;
+        string responseBody;
 
-        if (!response.IsSuccessStatusCode)
+        try
+        {
+            response = await httpClient.SendAsync(
+                httpRequest,
+                cancellationToken);
+            responseBody = await response.Content.ReadAsStringAsync(
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             throw new AiParserException(
-                (int)response.StatusCode,
-                ReadErrorMessage(responseBody));
+                (int)HttpStatusCode.GatewayTimeout,
+                $"AI semantic search request timed out or connection was aborted after {httpClient.Timeout.TotalSeconds:0} seconds.");
         }
-
-        if (string.IsNullOrWhiteSpace(responseBody))
+        catch (HttpRequestException ex)
         {
-            return [];
+            throw new AiParserException(
+                (int)HttpStatusCode.BadGateway,
+                $"Cannot connect to AI semantic search service. {ex.Message}");
         }
 
-        return JsonSerializer.Deserialize<AiSemanticSearchResult[]>(
-                   responseBody,
-                   JsonOptions)
-               ?? [];
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new AiParserException(
+                    (int)response.StatusCode,
+                    ReadErrorMessage(responseBody));
+            }
+
+            if (string.IsNullOrWhiteSpace(responseBody))
+            {
+                return [];
+            }
+
+            try
+            {
+                var result = JsonSerializer.Deserialize<AiSemanticSearchResponse>(
+                    responseBody,
+                    JsonOptions);
+
+                return result?.Data ?? [];
+            }
+            catch (JsonException ex)
+            {
+                throw new AiParserException(
+                    (int)HttpStatusCode.BadGateway,
+                    $"AI semantic search response is not valid JSON. {ex.Message}");
+            }
+        }
     }
 
     private static string ReadErrorMessage(string responseBody)

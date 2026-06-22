@@ -1,5 +1,5 @@
+using System.Security.Claims;
 using BEScanCV.API.Common;
-using BEScanCV.API.Extensions;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
@@ -29,7 +29,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
                 .ToArray(),
             requestId,
             batchId,
-            User.GetCurrentUserId());
+            GetCurrentUserId());
 
         try
         {
@@ -219,6 +219,18 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         var path = endpoint.StartsWith('/') ? endpoint : $"/{endpoint}";
 
         return $"{scheme}://{Request.Host}{Request.PathBase}{path}";
+    }
+
+    private long? GetCurrentUserId()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                     User.FindFirstValue("sub") ??
+                     User.FindFirstValue("user_id") ??
+                     User.FindFirstValue("id");
+
+        return long.TryParse(userId, out var parsedUserId) && parsedUserId > 0
+            ? parsedUserId
+            : null;
     }
 
 }

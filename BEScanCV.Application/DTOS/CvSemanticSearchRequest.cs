@@ -17,10 +17,7 @@ public sealed class AiSemanticSearchRequest
     [JsonPropertyName("query")]
     public string Query { get; set; } = string.Empty;
 
-    [JsonPropertyName("topK")]
+    [JsonPropertyName("top_k")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? TopK { get; set; }
-
-    [JsonPropertyName("user_id")]
-    public long UserId { get; set; }
 }

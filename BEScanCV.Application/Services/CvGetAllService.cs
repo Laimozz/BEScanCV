@@ -4,23 +4,22 @@ using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
+using Microsoft.Extensions.Configuration;
 
 namespace BEScanCV.Application.Services;
 
-public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGetAllService
+public sealed class CvGetAllService(
+    ICvInfoRepository cvInfoRepository,
+    IConfiguration configuration) : ICvGetAllService
 {
     public async Task<CvGetAllResponse> CvGetAllAsync(
         CvGetAllRequest request,
-        string requestBaseUrl,
-        long uploadedBy,
         CancellationToken cancellationToken = default)
     {
         var page = NormalizePage(request.Page);
         var limit = request.Limit > 0 ? request.Limit : 10;
 
-        var cvs = await cvInfoRepository.GetWithSkillsAsync(
-            uploadedBy,
-            cancellationToken);
+        var cvs = await cvInfoRepository.GetWithSkillsAsync(cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
@@ -37,33 +36,18 @@ public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGet
                 .ToList();
         }
 
-        // Map and order the domain records into DTOs
+        var baseUrl = configuration["PublicBaseUrl"];
         var mappedResults = cvs
-            .Select(cv =>
-            {
-                var candidateSkills = cv.CvSkills
-                    .Select(cvSkill => cvSkill.Name)
-                    .Where(skill => !string.IsNullOrWhiteSpace(skill))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
-
-                return new CvSearchResultDto(
-                    cv.FullName,
-                    cv.Email,
-                    cv.CvFileId,
-                    candidateSkills,
-                    cv.CreatedAt,
-                    new CvUploaderDto(
-                        cv.CvFile?.UploadedBy ?? 0,
-                        cv.CvFile?.Uploader?.FullName ?? string.Empty),
-                    BuildPdfUrl(cv.CvFile?.FileUrl, requestBaseUrl));
-            })
-            .OrderByDescending(cv => cv.CreatedAt) // Ensures a predictable sorted feed
+            .OrderByDescending(cv => cv.CreatedAt)
+            .Select(cv => CvDataResponseMapper.Map<CvGetAllItemResponse>(cv, baseUrl))
             .ToArray();
 
         return CreatePagedResponse(page, limit, mappedResults);
     }
-    private static CvGetAllResponse CreatePagedResponse(int page, int limit, IReadOnlyCollection<CvSearchResultDto> resultsCollection)
+    private static CvGetAllResponse CreatePagedResponse(
+        int page,
+        int limit,
+        IReadOnlyCollection<CvGetAllItemResponse> resultsCollection)
 {
     var totalItems = resultsCollection.Count;
     var totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)limit);
@@ -79,20 +63,6 @@ public sealed class CvGetAllService(ICvInfoRepository cvInfoRepository) : ICvGet
 }
 
     private static int NormalizePage(int page) => page < 1 ? 1 : page;
-
-    private static string? BuildPdfUrl(string? fileUrl, string requestBaseUrl)
-    {
-        if (string.IsNullOrWhiteSpace(fileUrl)) return null;
-
-        if (Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri) &&
-            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
-            return fileUrl;
-
-        var fileName = Path.GetFileName(
-            fileUrl.Replace('/', Path.DirectorySeparatorChar)
-                   .Replace('\\', Path.DirectorySeparatorChar));
-        return $"{requestBaseUrl.TrimEnd('/')}/files/{fileName}";
-    }
 
    
     private static string Normalize(string value) => value.Trim().ToLowerInvariant();

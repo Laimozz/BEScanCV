@@ -380,11 +380,6 @@ public sealed class CvService(
         CvQualityScoresRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (request.UserId <= 0)
-        {
-            throw new CvUploadValidationException("user_id is required.");
-        }
-
         if (request.CvIds is null || request.CvIds.Length == 0)
         {
             throw new CvUploadValidationException("cv_ids is required.");
@@ -408,7 +403,6 @@ public sealed class CvService(
 
         var cvInfos = await cvInfoRepository.GetByAiDocumentIdsAsync(
             cvIds,
-            request.UserId,
             cancellationToken);
 
         var cvInfoByAiDocumentId = cvInfos

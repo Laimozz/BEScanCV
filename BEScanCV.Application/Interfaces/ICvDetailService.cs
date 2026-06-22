@@ -10,7 +10,5 @@ public interface ICvDetailService
     /// </summary>
     Task<CvDetailResponse?> GetByCvFileIdAsync(
         long cvFileId,
-        string requestBaseUrl,
-        long uploadedBy,
         CancellationToken cancellationToken = default);
 }

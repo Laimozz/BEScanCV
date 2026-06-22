@@ -2,25 +2,18 @@ using System.Text.Json.Serialization;
 
 namespace BEScanCV.Application.DTOS;
 
-public sealed class CvSearchSemanticResponse : CvDataResponse
-{
-    [JsonPropertyName("score")]
-    public CvSemanticScoreResponse Score { get; set; } = new();
-
-    [JsonPropertyName("reasons")]
-    public CvSemanticReasonsResponse Reasons { get; set; } = new();
-}
+public sealed class CvSearchSemanticResponse : CvDataResponse;
 
 public sealed class CvSemanticScoreResponse
 {
     [JsonPropertyName("offline_score")]
-    public double OfflineScore { get; set; }
+    public double? OfflineScore { get; set; }
 
     [JsonPropertyName("matching_score")]
-    public double MatchingScore { get; set; }
+    public double? MatchingScore { get; set; }
 
     [JsonPropertyName("final_score")]
-    public double FinalScore { get; set; }
+    public double? FinalScore { get; set; }
 }
 
 public sealed class CvSemanticReasonsResponse
@@ -51,4 +44,10 @@ public sealed class AiSemanticSearchResult
 
     [JsonPropertyName("reasons")]
     public CvSemanticReasonsResponse Reasons { get; set; } = new();
+}
+
+public sealed class AiSemanticSearchResponse
+{
+    [JsonPropertyName("data")]
+    public AiSemanticSearchResult[] Data { get; set; } = [];
 }

@@ -4,20 +4,21 @@ using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
+using Microsoft.Extensions.Configuration;
 
 namespace BEScanCV.Application.Services;
 
 public sealed class CvSearchService(
     ICvInfoRepository cvInfoRepository,
     ISearchQueryParser searchQueryParser,
-    ISemanticSearchClient semanticSearchClient) : ICvSearchService
+    ISemanticSearchClient semanticSearchClient,
+    IConfiguration configuration) : ICvSearchService
 {
     private const int PageSize = 10;
 
     public async Task<CvSearchResponse> SearchAsync(
         CvSearchRequest request,
         string requestBaseUrl,
-        long uploadedBy,
         CancellationToken cancellationToken = default)
     {
         var page = NormalizePage(request.Page);
@@ -34,9 +35,7 @@ public sealed class CvSearchService(
             return CreatePagedResponse(page, limit, []);
         }
 
-        var cvs = await cvInfoRepository.GetWithSkillsAsync(
-            uploadedBy,
-            cancellationToken);
+        var cvs = await cvInfoRepository.GetWithSkillsAsync(cancellationToken);
 
         var rankedResults = cvs
             .Select(cv =>
@@ -64,26 +63,22 @@ public sealed class CvSearchService(
     }
 
     public async Task<IReadOnlyCollection<CvFavoriteResponse>> GetFavoritesAsync(
-        long uploadedBy,
         CancellationToken cancellationToken = default)
     {
-        var favorites = await cvInfoRepository.GetFavoritesAsync(
-            uploadedBy,
-            cancellationToken);
+        var favorites = await cvInfoRepository.GetFavoritesAsync(cancellationToken);
+        var baseUrl = configuration["PublicBaseUrl"];
 
         return favorites
-            .Select(MapCvDataResponse<CvFavoriteResponse>)
+            .Select(cv => CvDataResponseMapper.Map<CvFavoriteResponse>(cv, baseUrl))
             .ToArray();
     }
 
     public async Task<IReadOnlyCollection<CvSearchSemanticResponse>> SemanticSearchAsync(
         CvSemanticSearchRequest request,
-        long uploadedBy,
         CancellationToken cancellationToken = default)
     {
         var aiResults = await semanticSearchClient.SearchAsync(
             request,
-            uploadedBy,
             cancellationToken);
 
         var cvIds = aiResults
@@ -99,7 +94,6 @@ public sealed class CvSearchService(
 
         var cvs = await cvInfoRepository.GetByAiDocumentIdsAsync(
             cvIds,
-            uploadedBy,
             cancellationToken);
 
         var cvByAiDocumentId = cvs
@@ -112,91 +106,33 @@ public sealed class CvSearchService(
                 group => group.First(),
                 StringComparer.Ordinal);
 
-        return aiResults
+        var uniqueAiResults = aiResults
             .Where(result =>
                 !string.IsNullOrWhiteSpace(result.CvId) &&
                 cvByAiDocumentId.ContainsKey(result.CvId.Trim()))
+            .GroupBy(
+                result => result.CvId.Trim(),
+                StringComparer.Ordinal)
+            .Select(group => group.First());
+
+        if (request.TopK is > 0)
+        {
+            uniqueAiResults = uniqueAiResults.Take(request.TopK.Value);
+        }
+
+        var baseUrl = configuration["PublicBaseUrl"];
+        return uniqueAiResults
             .Select(result =>
             {
                 var cv = cvByAiDocumentId[result.CvId.Trim()];
                 var response =
-                    MapCvDataResponse<CvSearchSemanticResponse>(cv);
+                    CvDataResponseMapper.Map<CvSearchSemanticResponse>(cv, baseUrl);
 
-                response.Score = result.Scores;
+                response.Scores = result.Scores;
                 response.Reasons = result.Reasons;
                 return response;
             })
             .ToArray();
-    }
-
-    private static TResponse MapCvDataResponse<TResponse>(CvInfo cv)
-        where TResponse : CvDataResponse, new()
-    {
-        return new TResponse
-        {
-            Id = cv.Id,
-            CvFileId = cv.CvFileId,
-            FullName = cv.FullName,
-            Email = cv.Email,
-            Phone = cv.Phone,
-            Position = cv.Position,
-            TotalExperienceYears = cv.TotalExperienceYears,
-            DateOfBirth = cv.DateOfBirth,
-            Address = cv.Address,
-            Summary = cv.Summary,
-            Educations = cv.Educations?.RootElement.Clone(),
-            ProfileData = cv.ProfileData?.RootElement.Clone(),
-            QualityScore = cv.QualityScore,
-            QualityReason = cv.QualityReason,
-            QualityDetails = cv.QualityDetails?.RootElement.Clone(),
-            IsMarked = cv.IsMarked,
-            Tag = cv.Tag,
-            WorkType = cv.WorkType,
-            Note = cv.Note,
-            CvFile = cv.CvFile is null
-                ? null
-                : new CvFileDataResponse
-                {
-                    Id = cv.CvFile.Id,
-                    UploadedBy = cv.CvFile.UploadedBy,
-                    OriginalFileName = cv.CvFile.OriginalFileName,
-                    FileUrl = cv.CvFile.FileUrl,
-                    FileType = cv.CvFile.FileType,
-                    FileSize = cv.CvFile.FileSize,
-                    AiDocumentId = cv.CvFile.AiDocumentId,
-                    CreatedAt = cv.CvFile.CreatedAt,
-                    UpdatedAt = cv.CvFile.UpdatedAt
-                },
-            CvSkills = cv.CvSkills
-                .Select(skill => new CvSkillDataResponse
-                {
-                    Id = skill.Id,
-                    CvInfoId = skill.CvInfoId,
-                    Name = skill.Name
-                })
-                .ToArray(),
-            CvCertifications = cv.CvCertifications
-                .Select(certification =>
-                    new CvCertificationDataResponse
-                    {
-                        Id = certification.Id,
-                        CvInfoId = certification.CvInfoId,
-                        Name = certification.Name
-                    })
-                .ToArray(),
-            WorkExperiences = cv.WorkExperiences
-                .Select(experience =>
-                    new CvWorkExperienceDataResponse
-                    {
-                        Id = experience.Id,
-                        CvInfoId = experience.CvInfoId,
-                        Company = experience.Company,
-                        Position = experience.Position,
-                        Duration = experience.Duration,
-                        Responsibility = experience.Responsibility
-                    })
-                .ToArray()
-        };
     }
 
     private static CvSearchResponse CreatePagedResponse(int page, int limit, IReadOnlyCollection<CvSearchResultDto> rankedResults)

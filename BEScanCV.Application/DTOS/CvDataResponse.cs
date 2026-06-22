@@ -5,7 +5,7 @@ namespace BEScanCV.Application.DTOS;
 
 public abstract class CvDataResponse
 {
-    [JsonPropertyName("id")]
+    [JsonPropertyName("cv_infos_id")]
     public long Id { get; set; }
 
     [JsonPropertyName("cv_file_id")]
@@ -38,9 +38,6 @@ public abstract class CvDataResponse
     [JsonPropertyName("educations")]
     public JsonElement? Educations { get; set; }
 
-    [JsonPropertyName("profile_data")]
-    public JsonElement? ProfileData { get; set; }
-
     [JsonPropertyName("quality_score")]
     public double? QualityScore { get; set; }
 
@@ -65,19 +62,25 @@ public abstract class CvDataResponse
     [JsonPropertyName("cv_file")]
     public CvFileDataResponse? CvFile { get; set; }
 
-    [JsonPropertyName("cv_skills")]
-    public CvSkillDataResponse[] CvSkills { get; set; } = [];
+    [JsonPropertyName("skills")]
+    public string[] CvSkills { get; set; } = [];
 
     [JsonPropertyName("cv_certifications")]
     public CvCertificationDataResponse[] CvCertifications { get; set; } = [];
 
     [JsonPropertyName("work_experiences")]
     public CvWorkExperienceDataResponse[] WorkExperiences { get; set; } = [];
+
+    [JsonPropertyName("scores")]
+    public CvSemanticScoreResponse Scores { get; set; } = new();
+
+    [JsonPropertyName("reasons")]
+    public CvSemanticReasonsResponse Reasons { get; set; } = new();
 }
 
 public sealed class CvFileDataResponse
 {
-    [JsonPropertyName("id")]
+    [JsonPropertyName("cv_file_id")]
     public long Id { get; set; }
 
     [JsonPropertyName("uploaded_by")]

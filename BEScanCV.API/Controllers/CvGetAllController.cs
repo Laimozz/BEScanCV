@@ -1,5 +1,4 @@
 using BEScanCV.API.Common;
-using BEScanCV.API.Extensions;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
@@ -10,7 +9,7 @@ namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs/getAll")]
-[Authorize]
+//[Authorize]
 public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : ControllerBase
 {
     [HttpPost]
@@ -18,23 +17,10 @@ public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : Contr
         [FromBody] CvGetAllRequest request,
         CancellationToken cancellationToken)
     {
-        var uploadedBy = User.GetCurrentUserId();
-        if (uploadedBy is null)
-        {
-            return Unauthorized(new ApiResponse<object>(null)
-            {
-                Message = "Authenticated user is required.",
-                Success = false,
-                StatusCode = StatusCodes.Status401Unauthorized
-            });
-        }
-
         try
         {
             var response = await cvGetAllService.CvGetAllAsync(
                 request,
-                GetRequestBaseUrl(),
-                uploadedBy.Value,
                 cancellationToken);
             return Ok(new ApiResponse<CvGetAllResponse>(response));
         }
@@ -52,7 +38,4 @@ public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : Contr
             });
         }
     }
-
-    private string GetRequestBaseUrl() =>
-        $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
 }
