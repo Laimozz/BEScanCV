@@ -53,6 +53,26 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         };
     }
 
+    public async Task<GetUserResponse> GetUserByIdAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var user = await userRepository.GetByIdAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException("User not found");
+
+        return new GetUserResponse
+        {
+           User = new UserItemDto
+            {
+                Id = user.Id,
+                FullName = user.FullName,
+                Email = user.Email,
+                Role = user.Role,
+                Status = user.Status,
+                LastActive = user.UpdatedAt
+            }
+        };
+        
+    }
+
     public async Task<CreateUserResponse> CreateUserAsync(
         CreateUserRequest request,
         CancellationToken cancellationToken = default)
@@ -175,4 +195,5 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
             .Select(_ => chars[Random.Shared.Next(chars.Length)])
             .ToArray());
     }
+
 }
