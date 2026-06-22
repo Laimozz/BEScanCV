@@ -48,6 +48,9 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
         return await dbContext.CvInfos
             .AsNoTracking()
             .Include(cvInfo => cvInfo.CvFile)
+            .Include(cvInfo => cvInfo.CvSkills)
+            .Include(cvInfo => cvInfo.CvCertifications)
+            .Include(cvInfo => cvInfo.WorkExperiences)
             .Where(cvInfo =>
                 cvInfo.CvFile != null &&
                 cvInfo.CvFile.AiDocumentId != null &&
@@ -64,6 +67,20 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
             .Include(cvInfo => cvInfo.CvSkills)
             .Include(cvInfo => cvInfo.CvCertifications)
             .Include(cvInfo => cvInfo.WorkExperiences)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<CvInfo>> GetFavoritesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await dbContext.CvInfos
+            .AsNoTracking()
+            .Where(cvInfo => cvInfo.IsMarked)
+            .Include(cvInfo => cvInfo.CvFile)
+            .Include(cvInfo => cvInfo.CvSkills)
+            .Include(cvInfo => cvInfo.CvCertifications)
+            .Include(cvInfo => cvInfo.WorkExperiences)
+            .OrderBy(cvInfo => cvInfo.Id)
             .ToListAsync(cancellationToken);
     }
 

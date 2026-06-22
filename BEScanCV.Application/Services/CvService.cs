@@ -154,7 +154,9 @@ public sealed class CvService(
             throw new CvUploadValidationException("batchId is required.");
         }
 
-        var batch = await cvUploadBatchRepository.GetByIdAsync(batchId.Trim(), cancellationToken: cancellationToken);
+        var batch = await cvUploadBatchRepository.GetByIdAsync(
+            batchId.Trim(),
+            cancellationToken: cancellationToken);
         if (batch is null)
         {
             throw new CvUploadValidationException("Batch not found.", 404);
@@ -215,7 +217,9 @@ public sealed class CvService(
 
         ValidateUpdateRequest(request);
 
-        var cvInfo = await cvInfoRepository.GetByCvFileIdAsync(cvFileId, cancellationToken);
+        var cvInfo = await cvInfoRepository.GetByCvFileIdAsync(
+            cvFileId,
+            cancellationToken);
         if (cvInfo is null)
         {
             throw new CvUploadValidationException("CV not found.", 404);
@@ -306,7 +310,9 @@ public sealed class CvService(
             throw new CvUploadValidationException("cvFileId is invalid.");
         }
 
-        var cvInfo = await cvInfoRepository.GetByCvFileIdAsync(cvFileId, cancellationToken);
+        var cvInfo = await cvInfoRepository.GetByCvFileIdAsync(
+            cvFileId,
+            cancellationToken);
         if (cvInfo?.CvFile is null)
         {
             throw new CvUploadValidationException("CV not found.", 404);
@@ -349,7 +355,9 @@ public sealed class CvService(
         }
 
         var cvId = request.CvId.Trim();
-        var cvInfo = await cvInfoRepository.GetByAiDocumentIdAsync(cvId, cancellationToken);
+        var cvInfo = await cvInfoRepository.GetByAiDocumentIdAsync(
+            cvId,
+            cancellationToken);
         if (cvInfo is null)
         {
             throw new CvUploadValidationException(
@@ -684,6 +692,15 @@ public sealed class CvService(
             return false;
         }
     }
+
+    private static string GetContentType(string fileType) =>
+        fileType.ToLowerInvariant() switch
+        {
+            "pdf" => "application/pdf",
+            "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "doc" => "application/msword",
+            _ => "application/octet-stream"
+        };
 
     private sealed record ValidatedUploadFile(
         string OriginalFileName,

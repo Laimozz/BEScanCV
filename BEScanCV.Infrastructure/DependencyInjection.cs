@@ -33,6 +33,7 @@ public static class DependencyInjection
             BaseUrl = configuration[$"{AiServiceOptions.SectionName}:BaseUrl"] ?? string.Empty,
             ParseSearchQueryPath = configuration[$"{AiServiceOptions.SectionName}:ParseSearchQueryPath"] ?? "/parse-search-query",
             ProcessCvPath = configuration[$"{AiServiceOptions.SectionName}:ProcessCvPath"] ?? "/api/v1/cv/index",
+            SemanticSearchPath = configuration[$"{AiServiceOptions.SectionName}:SemanticSearchPath"] ?? "/api/v1/search",
             ApiKey = configuration[$"{AiServiceOptions.SectionName}:ApiKey"]
         };
 
@@ -73,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<ICvUploadBatchItemRepository, CvUploadBatchItemRepository>();
 
         services.AddScoped<ISearchQueryParser, AiSearchQueryParserClient>();
+        services.AddScoped<ISemanticSearchClient, AiSemanticSearchClient>();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<ICvFileStorageService, LocalCvFileStorageService>();

@@ -213,6 +213,14 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
     }
 
+    private string BuildWebSocketEndpoint(string endpoint)
+    {
+        var scheme = Request.IsHttps ? "wss" : "ws";
+        var path = endpoint.StartsWith('/') ? endpoint : $"/{endpoint}";
+
+        return $"{scheme}://{Request.Host}{Request.PathBase}{path}";
+    }
+
     private long? GetCurrentUserId()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
@@ -225,11 +233,4 @@ public sealed class CvController(ICvService cvService) : ControllerBase
             : null;
     }
 
-    private string BuildWebSocketEndpoint(string endpoint)
-    {
-        var scheme = Request.IsHttps ? "wss" : "ws";
-        var path = endpoint.StartsWith('/') ? endpoint : $"/{endpoint}";
-
-        return $"{scheme}://{Request.Host}{Request.PathBase}{path}";
-    }
 }
