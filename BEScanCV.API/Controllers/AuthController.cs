@@ -49,7 +49,7 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         return Ok(new ApiResponse<object>(null) { Message = "Logged out successfully", StatusCode = 200 });
     }
 
-     [HttpPatch("change-password/{userId:long}")]
+     [HttpPost("change-password/{userId:long}")]
     public async Task<ActionResult<ApiResponse<object>>> ChangePassword(
         long userId,
         [FromBody] ChangePasswordRequest request,
