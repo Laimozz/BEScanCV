@@ -19,7 +19,7 @@ public interface ICvInfoRepository
     Task UpdateAsync(CvInfo cvInfo, CancellationToken cancellationToken = default);
     Task UpdateEditableDataAsync(
         CvInfo cvInfo,
-        IReadOnlyCollection<string> certifications,
+        IReadOnlyCollection<string>? certifications,
         CancellationToken cancellationToken = default);
     Task UpsertExtractedDataAsync(
         CvInfo cvInfo,
