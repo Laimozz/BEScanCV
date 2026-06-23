@@ -51,7 +51,6 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
 
      [HttpPost("change-password")]
     public async Task<ActionResult<ApiResponse<object>>> ChangePassword(
-        [FromHeader] string accessToken,
         [FromBody] ChangePasswordRequest request,
         CancellationToken cancellationToken)
     {
