@@ -49,14 +49,19 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         return Ok(new ApiResponse<object>(null) { Message = "Logged out successfully", StatusCode = 200 });
     }
 
-     [HttpPost("change-password/{userId:long}")]
+     [HttpPost("change-password")]
     public async Task<ActionResult<ApiResponse<object>>> ChangePassword(
-        long userId,
+        [FromHeader] string accessToken,
         [FromBody] ChangePasswordRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!long.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid token claims", StatusCode = 401 });
+
             await userService.ChangePasswordAsync(userId, request, cancellationToken);
             return Ok(new ApiResponse<object>(null)
             {

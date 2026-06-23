@@ -63,8 +63,6 @@ public sealed class JwtService(
         {
             AccessToken = accessToken,
             AccessTokenExpiresAt = accessTokenExpiry,
-            RefreshToken = refreshToken,
-            RefreshTokenExpiresAt = refreshExpiry,
             User = new UserDto
             {
                 Id = user.Id,
