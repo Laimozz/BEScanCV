@@ -108,24 +108,31 @@ public sealed class CvGetAllService(
 
     private static bool MatchesFilter(CvInfo cv, CvGetAllFilterDto filter)
     {
-        if (!MatchesExperience(cv.TotalExperienceYears, filter.TotalExperienceYears))
+        if (!MatchesExperience(cv.TotalExperienceYears, filter.total_experience_years))
             return false;
 
-        if (!string.IsNullOrWhiteSpace(filter.Location) &&
-            (string.IsNullOrWhiteSpace(cv.Address) || !Normalize(cv.Address).Contains(Normalize(filter.Location))))
+        if (!string.IsNullOrWhiteSpace(filter.location) &&
+            (string.IsNullOrWhiteSpace(cv.Address) || !Normalize(cv.Address).Contains(Normalize(filter.location))))
         {
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(filter.Position) &&
-            (string.IsNullOrWhiteSpace(cv.Position) || !Normalize(cv.Position).Contains(Normalize(filter.Position))))
+        if (!string.IsNullOrWhiteSpace(filter.position) &&
+            (string.IsNullOrWhiteSpace(cv.Position) || !Normalize(cv.Position).Contains(Normalize(filter.position))))
         {
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(filter.Skills))
+        if (!string.IsNullOrWhiteSpace(filter.work_type) &&
+            (string.IsNullOrWhiteSpace(cv.WorkType) || !Normalize(cv.WorkType).Contains(Normalize(filter.work_type))))
         {
-            var requiredSkills = filter.Skills
+            return false;
+        }
+
+
+        if (!string.IsNullOrWhiteSpace(filter.skills))
+        {
+            var requiredSkills = filter.skills
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(Normalize)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
