@@ -1,6 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
 using BEScanCV.API.Common;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 
@@ -11,7 +13,7 @@ namespace BEScanCV.API.Controllers;
 public sealed class AuthController(IUserService userService, IJwtService jwtService) : ControllerBase
 {
     [HttpPost("login")]
-    public async Task<ActionResult<ApiResponse<CurrentUserResponse>>> Login(
+    public async Task<ActionResult<ApiResponse<CurrentUserWithTokenResponse>>> Login(
         [FromBody] LoginRequest request,
         CancellationToken ct)
     {
@@ -19,7 +21,7 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         if (user == null || !userService.VerifyPassword(request.Password, user.PasswordHash))
             return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid username or password", StatusCode = 401 });
         var tokens = await jwtService.GenerateTokensAsync(user, ct);
-        return Ok(new ApiResponse<CurrentUserResponse>(tokens) { Message = "Login successful", StatusCode = 200 });
+        return Ok(new ApiResponse<CurrentUserWithTokenResponse>(tokens) { Message = "Login successful", StatusCode = 200 });
     }
 
     [HttpPost("refresh")]
@@ -46,4 +48,69 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         await jwtService.RevokeRefreshTokenAsync(request.RefreshToken, ct);
         return Ok(new ApiResponse<object>(null) { Message = "Logged out successfully", StatusCode = 200 });
     }
+
+     [HttpPatch("change-password/{userId:long}")]
+    public async Task<ActionResult<ApiResponse<object>>> ChangePassword(
+        long userId,
+        [FromBody] ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await userService.ChangePasswordAsync(userId, request, cancellationToken);
+            return Ok(new ApiResponse<object>(null)
+            {
+                Message = "Password changed successfully"
+            });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new ApiResponse<object>(null)
+            {
+                Success = false,
+                Message = "User not found",
+                StatusCode = 404
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ApiResponse<object>(null)
+            {
+                Success = false,
+                Message = ex.Message,
+                StatusCode = 400
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ApiResponse<object>(null)
+            {
+                Success = false,
+                Message = ex.Message,
+                StatusCode = 400
+            });
+        }
+    }
+
+    [HttpGet("me")]
+    [Authorize] 
+    public async Task<ActionResult<ApiResponse<CurrentUserResponse>>> GetCurrentUser(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Extract the user ID directly from the authenticated HttpContext claims
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            
+            if (!long.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid token claims", StatusCode = 401 });
+
+            var user = await userService.GetCurrentUserAsync(userId, cancellationToken);
+            return Ok(new ApiResponse<CurrentUserResponse>(user));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new ApiResponse<object>(null) { Success = false, Message = "User not found", StatusCode = 404 });
+        }
+    }
+
 }

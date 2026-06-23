@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 
 namespace BEScanCV.Application.Services;
 
-public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService) : IUserService
+public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService, IJwtService jwtService) : IUserService
 {
     private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$?-";
 
@@ -181,4 +181,23 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
             .Select(_ => chars[Random.Shared.Next(chars.Length)])
             .ToArray());
     }
+
+    public async Task<CurrentUserResponse?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken)
+{
+    var user = await userRepository.GetByIdAsync(userId, cancellationToken)
+        ?? throw new KeyNotFoundException("User not found");
+
+    return new CurrentUserResponse
+    {
+        User = new UserDto
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            Role = user.Role,
+            Status = user.Status,
+            LastActive = user.LastActive,
+        }
+    };
+}
 }
