@@ -45,7 +45,7 @@ public sealed class JwtService(
     public async Task<CurrentUserWithTokenResponse> GenerateTokensAsync(User user, CancellationToken ct = default)
     {
         var accessToken = GenerateAccessToken(user);
-        var refreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        var refreshToken = GenerateRawRefreshToken();
         var refreshExpiry = DateTime.UtcNow.AddDays(_options.RefreshTokenExpiryDays);
         var accessTokenExpiry = DateTime.UtcNow.AddMinutes(_options.AccessTokenExpiryMinutes);
 
@@ -63,6 +63,8 @@ public sealed class JwtService(
         {
             AccessToken = accessToken,
             AccessTokenExpiresAt = accessTokenExpiry,
+            RefreshToken = refreshToken,
+            RefreshTokenExpiresAt = refreshExpiry,
             User = new UserDto
             {
                 Id = user.Id,
@@ -96,7 +98,20 @@ public sealed class JwtService(
             throw new SecurityTokenException("Invalid or expired refresh token");
 
         await refreshTokenRepo.RevokeAsync(stored, ct);
-        return await GenerateTokensAsync(stored.User!, ct);
+        var newTokens = await GenerateTokensAsync(stored.User!, ct);
+        return new CurrentUserWithTokenResponse
+        {
+            AccessToken = newTokens.AccessToken,
+            AccessTokenExpiresAt = newTokens.AccessTokenExpiresAt,
+            RefreshToken = newTokens.RefreshToken,
+            RefreshTokenExpiresAt = newTokens.RefreshTokenExpiresAt,
+            User = newTokens.User
+        };
+    }
+
+    public string GenerateRawRefreshToken()
+    {
+        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
     }
 
     public async Task RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct = default)

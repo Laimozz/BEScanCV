@@ -10,4 +10,5 @@ public interface IJwtService
     long GetUserIdFromToken(string accessToken);
     Task<CurrentUserWithTokenResponse> RefreshTokenAsync(string refreshToken, CancellationToken ct = default);
     Task RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct = default);
+    string GenerateRawRefreshToken();
 }

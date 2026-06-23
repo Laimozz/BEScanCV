@@ -21,31 +21,40 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         if (user == null || !userService.VerifyPassword(request.Password, user.PasswordHash))
             return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid username or password", StatusCode = 401 });
         var tokens = await jwtService.GenerateTokensAsync(user, ct);
+        SetRefreshTokenCookie(tokens.RefreshToken!, tokens.RefreshTokenExpiresAt!.Value);
         return Ok(new ApiResponse<CurrentUserWithTokenResponse>(tokens) { Message = "Login successful", StatusCode = 200 });
     }
 
     [HttpPost("refresh")]
     public async Task<ActionResult<ApiResponse<RefreshResponse>>> Refresh(
-        [FromBody] RefreshRequest request,
         CancellationToken ct)
     {
         try
         {
-            var tokens = await jwtService.RefreshTokenAsync(request.RefreshToken, ct);
-            return Ok(new ApiResponse<RefreshResponse>(new RefreshResponse(tokens.AccessToken, tokens.AccessTokenExpiresAt)) { Message = "Token refreshed", StatusCode = 200 });
+            var refreshToken = Request.Cookies["refreshToken"];
+            if (string.IsNullOrEmpty(refreshToken))
+                return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Refresh token is invalid or expired", StatusCode = 401 });
+
+            var tokens = await jwtService.RefreshTokenAsync(refreshToken, ct);
+            SetRefreshTokenCookie(tokens.RefreshToken!, tokens.RefreshTokenExpiresAt!.Value);
+            return Ok(new ApiResponse<RefreshResponse>(new RefreshResponse(tokens.AccessToken, tokens.AccessTokenExpiresAt)) { Message = "Token refreshed successfully", StatusCode = 200 });
         }
         catch (SecurityTokenException)
         {
-            return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid or expired refresh token", StatusCode = 401 });
+            ClearRefreshTokenCookie();
+            return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Refresh token is invalid or expired", StatusCode = 401 });
         }
     }
 
     [HttpPost("logout")]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<object>>> Logout(
-        [FromBody] RefreshRequest request,
         CancellationToken ct)
     {
-        await jwtService.RevokeRefreshTokenAsync(request.RefreshToken, ct);
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (!string.IsNullOrEmpty(refreshToken))
+            await jwtService.RevokeRefreshTokenAsync(refreshToken, ct);
+        ClearRefreshTokenCookie();
         return Ok(new ApiResponse<object>(null) { Message = "Logged out successfully", StatusCode = 200 });
     }
 
@@ -115,6 +124,30 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         {
             return NotFound(new ApiResponse<object>(null) { Success = false, Message = "User not found", StatusCode = 404 });
         }
+    }
+
+    private void SetRefreshTokenCookie(string token, DateTime expiresAt)
+    {
+        Response.Cookies.Append("refreshToken", token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Path = "/api/v1/auth/refresh",
+            Expires = expiresAt.ToUniversalTime()
+        });
+    }
+
+    private void ClearRefreshTokenCookie()
+    {
+        Response.Cookies.Append("refreshToken", string.Empty, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Path = "/api/v1/auth/refresh",
+            Expires = new DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero)
+        });
     }
 
 }
