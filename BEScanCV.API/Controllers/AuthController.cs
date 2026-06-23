@@ -11,26 +11,26 @@ namespace BEScanCV.API.Controllers;
 public sealed class AuthController(IUserService userService, IJwtService jwtService) : ControllerBase
 {
     [HttpPost("login")]
-    public async Task<ActionResult<ApiResponse<TokenResponse>>> Login(
+    public async Task<ActionResult<ApiResponse<CurrentUserResponse>>> Login(
         [FromBody] LoginRequest request,
         CancellationToken ct)
     {
         var user = await userService.GetByEmailAsync(request.Email.Trim().ToLowerInvariant(), ct);
         if (user == null || !userService.VerifyPassword(request.Password, user.PasswordHash))
-            return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid credentials", StatusCode = 401 });
+            return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid username or password", StatusCode = 401 });
         var tokens = await jwtService.GenerateTokensAsync(user, ct);
-        return Ok(new ApiResponse<TokenResponse>(tokens) { Message = "Login successful" });
+        return Ok(new ApiResponse<CurrentUserResponse>(tokens) { Message = "Login successful", StatusCode = 200 });
     }
 
     [HttpPost("refresh")]
-    public async Task<ActionResult<ApiResponse<TokenResponse>>> Refresh(
+    public async Task<ActionResult<ApiResponse<RefreshResponse>>> Refresh(
         [FromBody] RefreshRequest request,
         CancellationToken ct)
     {
         try
         {
             var tokens = await jwtService.RefreshTokenAsync(request.RefreshToken, ct);
-            return Ok(new ApiResponse<TokenResponse>(tokens) { Message = "Token refreshed" });
+            return Ok(new ApiResponse<RefreshResponse>(new RefreshResponse(tokens.AccessToken, tokens.AccessTokenExpiresAt)) { Message = "Token refreshed", StatusCode = 200 });
         }
         catch (SecurityTokenException)
         {
@@ -44,6 +44,6 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         CancellationToken ct)
     {
         await jwtService.RevokeRefreshTokenAsync(request.RefreshToken, ct);
-        return Ok(new ApiResponse<object>(null) { Message = "Logged out successfully" });
+        return Ok(new ApiResponse<object>(null) { Message = "Logged out successfully", StatusCode = 200 });
     }
 }

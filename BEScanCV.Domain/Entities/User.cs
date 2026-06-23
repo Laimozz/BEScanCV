@@ -10,6 +10,7 @@ public sealed class User
     public string PasswordHash { get; set; } = string.Empty;
     public string Role { get; set; } = "User";
     public string Status { get; set; } = "Active";
+    public DateTime LastActive { get; set; } = DateTime.UtcNow;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

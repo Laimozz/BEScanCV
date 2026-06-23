@@ -42,11 +42,12 @@ public sealed class JwtService(
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public async Task<TokenResponse> GenerateTokensAsync(User user, CancellationToken ct = default)
+    public async Task<CurrentUserResponse> GenerateTokensAsync(User user, CancellationToken ct = default)
     {
         var accessToken = GenerateAccessToken(user);
         var refreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         var refreshExpiry = DateTime.UtcNow.AddDays(_options.RefreshTokenExpiryDays);
+        var accessTokenExpiry = DateTime.UtcNow.AddMinutes(_options.AccessTokenExpiryMinutes);
 
         var refreshEntity = new RefreshToken
         {
@@ -58,10 +59,23 @@ public sealed class JwtService(
 
         await refreshTokenRepo.AddAsync(refreshEntity, ct);
 
-        return new TokenResponse(accessToken, refreshToken, DateTime.UtcNow.AddMinutes(_options.AccessTokenExpiryMinutes));
+        return new CurrentUserResponse
+        {
+            AccessToken = accessToken,
+            AccessTokenExpiresAt = accessTokenExpiry,
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Role = user.Role,
+                Status = user.Status,
+                LastActive = user.LastActive
+            }
+        };
     }
 
-    public async Task<TokenResponse> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
+    public async Task<CurrentUserResponse> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
     {
         var tokenHash = passwordHasher.Hash(refreshToken);
         var stored = await refreshTokenRepo.GetByTokenHashAsync(tokenHash, ct);
