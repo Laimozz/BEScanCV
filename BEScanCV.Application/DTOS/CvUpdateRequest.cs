@@ -5,10 +5,10 @@ namespace BEScanCV.Application.DTOS;
 public sealed class CvUpdateRequest
 {
     [JsonPropertyName("full_name")]
-    public string FullName { get; set; } = string.Empty;
+    public string? FullName { get; set; }
 
     [JsonPropertyName("email")]
-    public string Email { get; set; } = string.Empty;
+    public string? Email { get; set; }
 
     [JsonPropertyName("phone")]
     public string? Phone { get; set; }
@@ -17,16 +17,16 @@ public sealed class CvUpdateRequest
     public string? Address { get; set; }
 
     [JsonPropertyName("educations")]
-    public CvEducationUniversityUpdateRequest[] Educations { get; set; } = [];
+    public CvEducationUniversityUpdateRequest[]? Educations { get; set; }
 
     [JsonPropertyName("certifications")]
-    public string[] Certifications { get; set; } = [];
+    public string[]? Certifications { get; set; }
 
     [JsonPropertyName("work_experience")]
-    public CvWorkExperienceUpdateRequest[] WorkExperience { get; set; } = [];
+    public CvWorkExperienceUpdateRequest[]? WorkExperience { get; set; }
 
     [JsonPropertyName("is_marked")]
-    public bool IsMarked { get; set; }
+    public bool? IsMarked { get; set; }
 
     [JsonPropertyName("note")]
     public string? Note { get; set; }

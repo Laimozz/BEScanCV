@@ -206,41 +206,53 @@ public sealed class CvService(
     }
 
     public async Task<CvUpdateResponse> UpdateAsync(
-        long cvFileId,
+        long cvInfoId,
         CvUpdateRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (cvFileId <= 0)
+        if (cvInfoId <= 0)
         {
-            throw new CvUploadValidationException("cvFileId is invalid.");
+            throw new CvUploadValidationException("cvInfoId is invalid.");
         }
 
         ValidateUpdateRequest(request);
 
-        var cvInfo = await cvInfoRepository.GetByCvFileIdAsync(
-            cvFileId,
+        var cvInfo = await cvInfoRepository.GetByIdAsync(
+            cvInfoId,
             cancellationToken);
         if (cvInfo is null)
         {
             throw new CvUploadValidationException("CV not found.", 404);
         }
 
-        cvInfo.FullName = request.FullName.Trim();
-        cvInfo.Email = request.Email.Trim();
-        cvInfo.Phone = NormalizeOptional(request.Phone);
-        cvInfo.Address = NormalizeOptional(request.Address);
+        if (!string.IsNullOrWhiteSpace(request.FullName))
+        {
+            cvInfo.FullName = request.FullName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            cvInfo.Email = request.Email.Trim();
+        }
+
+        cvInfo.Phone = NormalizeUpdateValue(request.Phone, cvInfo.Phone);
+        cvInfo.Address = NormalizeUpdateValue(request.Address, cvInfo.Address);
         cvInfo.Educations = PatchEducationUniversities(
             cvInfo.Educations,
             request.Educations);
-        cvInfo.IsMarked = request.IsMarked;
-        cvInfo.Note = NormalizeOptional(request.Note);
+        cvInfo.IsMarked = request.IsMarked ?? cvInfo.IsMarked;
+        cvInfo.Note = NormalizeUpdateValue(request.Note, cvInfo.Note);
         cvInfo.UpdatedAt = DateTime.UtcNow;
 
-        var certifications = (request.Certifications ?? [])
+        var requestedCertifications = request.Certifications?
             .Where(certification => !string.IsNullOrWhiteSpace(certification))
             .Select(certification => certification.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+
+        var certifications = requestedCertifications is { Length: > 0 }
+            ? requestedCertifications
+            : null;
 
         foreach (var requestedExperience in request.WorkExperience ?? [])
         {
@@ -255,9 +267,22 @@ public sealed class CvService(
                         $"work_experience id {requestedExperience.Id.Value} was not found.");
                 }
 
-                existingExperience.Company = NormalizeOptional(requestedExperience.Company);
-                existingExperience.Position = NormalizeOptional(requestedExperience.Position);
-                existingExperience.Duration = NormalizeOptional(requestedExperience.Duration);
+                existingExperience.Company = NormalizeUpdateValue(
+                    requestedExperience.Company,
+                    existingExperience.Company);
+                existingExperience.Position = NormalizeUpdateValue(
+                    requestedExperience.Position,
+                    existingExperience.Position);
+                existingExperience.Duration = NormalizeUpdateValue(
+                    requestedExperience.Duration,
+                    existingExperience.Duration);
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(requestedExperience.Company) &&
+                string.IsNullOrWhiteSpace(requestedExperience.Position) &&
+                string.IsNullOrWhiteSpace(requestedExperience.Duration))
+            {
                 continue;
             }
 
@@ -284,7 +309,10 @@ public sealed class CvService(
             Phone = cvInfo.Phone,
             Address = cvInfo.Address,
             Educations = cvInfo.Educations?.RootElement.Clone(),
-            Certifications = certifications,
+            Certifications = certifications ??
+                cvInfo.CvCertifications
+                    .Select(certification => certification.Name)
+                    .ToArray(),
             WorkExperience = cvInfo.WorkExperiences
                 .Select(experience => new CvWorkExperienceDto
                 {
@@ -302,16 +330,16 @@ public sealed class CvService(
     }
 
     public async Task DeleteAsync(
-        long cvFileId,
+        long cvInfoId,
         CancellationToken cancellationToken = default)
     {
-        if (cvFileId <= 0)
+        if (cvInfoId <= 0)
         {
-            throw new CvUploadValidationException("cvFileId is invalid.");
+            throw new CvUploadValidationException("cvInfoId is invalid.");
         }
 
-        var cvInfo = await cvInfoRepository.GetByCvFileIdAsync(
-            cvFileId,
+        var cvInfo = await cvInfoRepository.GetByIdAsync(
+            cvInfoId,
             cancellationToken);
         if (cvInfo?.CvFile is null)
         {
@@ -517,22 +545,12 @@ public sealed class CvService(
 
     private static void ValidateUpdateRequest(CvUpdateRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.FullName))
-        {
-            throw new CvUploadValidationException("full_name is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Email))
-        {
-            throw new CvUploadValidationException("email is required.");
-        }
-
-        if (request.FullName.Trim().Length > 255)
+        if (request.FullName?.Trim().Length > 255)
         {
             throw new CvUploadValidationException("full_name cannot exceed 255 characters.");
         }
 
-        if (request.Email.Trim().Length > 255)
+        if (request.Email?.Trim().Length > 255)
         {
             throw new CvUploadValidationException("email cannot exceed 255 characters.");
         }
@@ -597,6 +615,12 @@ public sealed class CvService(
 
         for (var index = 0; index < updateList.Length; index++)
         {
+            var university = NormalizeOptional(updateList[index].University);
+            if (university is null)
+            {
+                continue;
+            }
+
             JsonObject education;
             if (index < educationArray.Count && educationArray[index] is JsonObject existing)
             {
@@ -608,11 +632,14 @@ public sealed class CvService(
                 educationArray.Add(education);
             }
 
-            education["university"] = NormalizeOptional(updateList[index].University);
+            education["university"] = university;
         }
 
         return JsonDocument.Parse(educationArray.ToJsonString());
     }
+
+    private static string? NormalizeUpdateValue(string? requestedValue, string? currentValue) =>
+        string.IsNullOrWhiteSpace(requestedValue) ? currentValue : requestedValue.Trim();
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
