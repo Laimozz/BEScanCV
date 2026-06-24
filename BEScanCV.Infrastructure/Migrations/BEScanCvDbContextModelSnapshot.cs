@@ -196,7 +196,7 @@ namespace BEScanCV.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("New")
+                        .HasDefaultValue("new")
                         .HasColumnName("tag");
 
                     b.Property<int?>("TotalExperienceYears")
@@ -219,9 +219,9 @@ namespace BEScanCV.Infrastructure.Migrations
 
                     b.ToTable("cv_infos", null, t =>
                         {
-                            t.HasCheckConstraint("cv_infos_tag_check", "tag IN ('New', 'Contracted', 'In-Process', 'Rejected', 'Hired')");
+                            t.HasCheckConstraint("cv_infos_tag_check", "tag IN ('new', 'contacted', 'in-process', 'rejected', 'hired')");
 
-                            t.HasCheckConstraint("cv_infos_work_type_check", "work_type IS NULL OR work_type IN ('Remote', 'Full-time', 'Part-time')");
+                            t.HasCheckConstraint("cv_infos_work_type_check", "work_type IS NULL OR work_type IN ('remote', 'in-house', 'onsite')");
                         });
                 });
 

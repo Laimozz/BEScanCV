@@ -79,10 +79,10 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             {
                 table.HasCheckConstraint(
                     "cv_infos_tag_check",
-                    "tag IN ('New', 'Contracted', 'In-Process', 'Rejected', 'Hired')");
+                    "tag IN ('new', 'contacted', 'in-process', 'rejected', 'hired')");
                 table.HasCheckConstraint(
                     "cv_infos_work_type_check",
-                    "work_type IS NULL OR work_type IN ('Remote', 'Full-time', 'Part-time')");
+                    "work_type IS NULL OR work_type IN ('remote', 'in-house', 'onsite')");
             });
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id").UseIdentityAlwaysColumn();
@@ -105,7 +105,7 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             entity.Property(e => e.QualityDetails).HasColumnName("quality_details").HasColumnType("jsonb")
                   .HasConversion(isInMemory ? jsonDocConverter : null);
             entity.Property(e => e.IsMarked).HasColumnName("is_marked").HasDefaultValue(false);
-            entity.Property(e => e.Tag).HasColumnName("tag").HasMaxLength(20).HasDefaultValue("New").IsRequired();
+            entity.Property(e => e.Tag).HasColumnName("tag").HasMaxLength(20).HasDefaultValue("new").IsRequired();
             entity.Property(e => e.WorkType).HasColumnName("work_type").HasMaxLength(20);
             entity.Property(e => e.Note).HasColumnName("note").HasColumnType("text");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
