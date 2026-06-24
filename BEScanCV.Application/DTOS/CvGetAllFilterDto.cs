@@ -2,8 +2,9 @@ namespace BEScanCV.Application.DTOS;
 
 public class CvGetAllFilterDto
 {
-    public int? TotalExperienceYears { get; set; }
-    public string? Skills { get; set; }
-    public string? Position { get; set; }
-    // TODO: Add more filters
+    public int? total_experience_years  { get; set; }
+    public string? skills { get; set; }
+    public string? position { get; set; }
+    public string? location { get; set; }
+    public string? work_type { get; set; }
 }
