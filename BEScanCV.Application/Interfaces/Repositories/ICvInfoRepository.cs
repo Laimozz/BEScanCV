@@ -13,11 +13,13 @@ public interface ICvInfoRepository
         IReadOnlyCollection<string> aiDocumentIds,
         CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<CvInfo>> GetWithSkillsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<CvInfo>> GetFavoritesAsync(
+        CancellationToken cancellationToken = default);
     Task AddAsync(CvInfo cvInfo, CancellationToken cancellationToken = default);
     Task UpdateAsync(CvInfo cvInfo, CancellationToken cancellationToken = default);
     Task UpdateEditableDataAsync(
         CvInfo cvInfo,
-        IReadOnlyCollection<string> certifications,
+        IReadOnlyCollection<string>? certifications,
         CancellationToken cancellationToken = default);
     Task UpsertExtractedDataAsync(
         CvInfo cvInfo,

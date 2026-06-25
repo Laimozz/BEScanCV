@@ -17,12 +17,12 @@ public interface ICvService
         CancellationToken cancellationToken = default);
 
     Task<CvUpdateResponse> UpdateAsync(
-        long cvFileId,
+        long cvInfoId,
         CvUpdateRequest request,
         CancellationToken cancellationToken = default);
 
     Task DeleteAsync(
-        long cvFileId,
+        long cvInfoId,
         CancellationToken cancellationToken = default);
 
     Task UpdateQualityScoreAsync(

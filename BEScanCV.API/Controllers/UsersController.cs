@@ -192,46 +192,5 @@ public sealed class UsersController(IUserService userService) : ControllerBase
     /// <summary>
     /// PATCH /api/v1/users/change-password/{userId}
     /// </summary>
-    [HttpPatch("change-password/{userId:long}")]
-    public async Task<ActionResult<ApiResponse<object>>> ChangePassword(
-        long userId,
-        [FromBody] ChangePasswordRequest request,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await userService.ChangePasswordAsync(userId, request, cancellationToken);
-            return Ok(new ApiResponse<object>(null)
-            {
-                Message = "Password changed successfully"
-            });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ApiResponse<object>(null)
-            {
-                Success = false,
-                Message = "User not found",
-                StatusCode = 404
-            });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new ApiResponse<object>(null)
-            {
-                Success = false,
-                Message = ex.Message,
-                StatusCode = 400
-            });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new ApiResponse<object>(null)
-            {
-                Success = false,
-                Message = ex.Message,
-                StatusCode = 400
-            });
-        }
-    }
+   
 }

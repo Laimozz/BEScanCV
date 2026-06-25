@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 
 namespace BEScanCV.Application.Services;
 
-public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService) : IUserService
+public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService, IJwtService jwtService) : IUserService
 {
     private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$?-";
 
@@ -164,10 +164,10 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         if (string.IsNullOrWhiteSpace(request.NewPassword))
             throw new ArgumentException("New password is required.");
 
-        if (string.IsNullOrWhiteSpace(request.ConfirmNewPassword))
+        if (string.IsNullOrWhiteSpace(request.ConfirmPassword))
             throw new ArgumentException("Confirm new password is required.");
 
-        if (request.NewPassword != request.ConfirmNewPassword)
+        if (request.NewPassword != request.ConfirmPassword)
             throw new ArgumentException("New password and confirm password do not match.");
 
         var user = await userRepository.GetByIdAsync(userId, cancellationToken)

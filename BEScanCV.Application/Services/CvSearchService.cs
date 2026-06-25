@@ -4,16 +4,22 @@ using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
+using Microsoft.Extensions.Configuration;
 
 namespace BEScanCV.Application.Services;
 
 public sealed class CvSearchService(
     ICvInfoRepository cvInfoRepository,
-    ISearchQueryParser searchQueryParser) : ICvSearchService
+    ISearchQueryParser searchQueryParser,
+    ISemanticSearchClient semanticSearchClient,
+    IConfiguration configuration) : ICvSearchService
 {
     private const int PageSize = 10;
 
-    public async Task<CvSearchResponse> SearchAsync(CvSearchRequest request, string requestBaseUrl, CancellationToken cancellationToken = default)
+    public async Task<CvSearchResponse> SearchAsync(
+        CvSearchRequest request,
+        string requestBaseUrl,
+        CancellationToken cancellationToken = default)
     {
         var page = NormalizePage(request.Page);
         var limit = request.Limit > 0 ? request.Limit : 10; // Default limit fallback
@@ -54,6 +60,79 @@ public sealed class CvSearchService(
             .ToArray();
 
         return CreatePagedResponse(page, limit, rankedResults);
+    }
+
+    public async Task<IReadOnlyCollection<CvFavoriteResponse>> GetFavoritesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var favorites = await cvInfoRepository.GetFavoritesAsync(cancellationToken);
+        var baseUrl = configuration["PublicBaseUrl"];
+
+        return favorites
+            .Select(cv => CvDataResponseMapper.Map<CvFavoriteResponse>(cv, baseUrl))
+            .ToArray();
+    }
+
+    public async Task<IReadOnlyCollection<CvSearchSemanticResponse>> SemanticSearchAsync(
+        CvSemanticSearchRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var aiResults = await semanticSearchClient.SearchAsync(
+            request,
+            cancellationToken);
+
+        var cvIds = aiResults
+            .Where(result => !string.IsNullOrWhiteSpace(result.CvId))
+            .Select(result => result.CvId.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (cvIds.Length == 0)
+        {
+            return [];
+        }
+
+        var cvs = await cvInfoRepository.GetByAiDocumentIdsAsync(
+            cvIds,
+            cancellationToken);
+
+        var cvByAiDocumentId = cvs
+            .Where(cv => !string.IsNullOrWhiteSpace(cv.CvFile?.AiDocumentId))
+            .GroupBy(
+                cv => cv.CvFile!.AiDocumentId!,
+                StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.First(),
+                StringComparer.Ordinal);
+
+        var uniqueAiResults = aiResults
+            .Where(result =>
+                !string.IsNullOrWhiteSpace(result.CvId) &&
+                cvByAiDocumentId.ContainsKey(result.CvId.Trim()))
+            .GroupBy(
+                result => result.CvId.Trim(),
+                StringComparer.Ordinal)
+            .Select(group => group.First());
+
+        if (request.TopK is > 0)
+        {
+            uniqueAiResults = uniqueAiResults.Take(request.TopK.Value);
+        }
+
+        var baseUrl = configuration["PublicBaseUrl"];
+        return uniqueAiResults
+            .Select(result =>
+            {
+                var cv = cvByAiDocumentId[result.CvId.Trim()];
+                var response =
+                    CvDataResponseMapper.Map<CvSearchSemanticResponse>(cv, baseUrl);
+
+                response.Scores = result.Scores;
+                response.Reasons = result.Reasons;
+                return response;
+            })
+            .ToArray();
     }
 
     private static CvSearchResponse CreatePagedResponse(int page, int limit, IReadOnlyCollection<CvSearchResultDto> rankedResults)

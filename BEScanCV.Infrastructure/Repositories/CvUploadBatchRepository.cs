@@ -23,7 +23,9 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
         var requestToken = BuildRequestToken(requestId);
         return dbContext.CvUploadBatches
             .AsNoTracking()
-            .FirstOrDefaultAsync(batch => batch.RequestIds.Contains(requestToken), cancellationToken);
+            .FirstOrDefaultAsync(
+                batch => batch.RequestIds.Contains(requestToken),
+                cancellationToken);
     }
 
     public async Task AddAsync(CvUploadBatch batch, CancellationToken cancellationToken = default)

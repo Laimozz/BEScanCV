@@ -22,7 +22,7 @@ public sealed class CvInfo
     public string? QualityReason { get; set; }
     public JsonDocument? QualityDetails { get; set; }
     public bool IsMarked { get; set; }
-    public string Tag { get; set; } = "New";
+    public string Tag { get; set; } = "new";
     public string? WorkType { get; set; }
     public string? Note { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

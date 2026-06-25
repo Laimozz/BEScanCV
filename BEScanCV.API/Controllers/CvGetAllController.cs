@@ -9,7 +9,7 @@ namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs/getAll")]
-[Authorize]
+//[Authorize]
 public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : ControllerBase
 {
     [HttpPost]
@@ -19,7 +19,9 @@ public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : Contr
     {
         try
         {
-            var response = await cvGetAllService.CvGetAllAsync(request, GetRequestBaseUrl(), cancellationToken);
+            var response = await cvGetAllService.CvGetAllAsync(
+                request,
+                cancellationToken);
             return Ok(new ApiResponse<CvGetAllResponse>(response));
         }
         catch (AiParserException ex)
@@ -36,7 +38,4 @@ public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : Contr
             });
         }
     }
-
-    private string GetRequestBaseUrl() =>
-        $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
 }

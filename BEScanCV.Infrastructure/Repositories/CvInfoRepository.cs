@@ -48,6 +48,9 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
         return await dbContext.CvInfos
             .AsNoTracking()
             .Include(cvInfo => cvInfo.CvFile)
+            .Include(cvInfo => cvInfo.CvSkills)
+            .Include(cvInfo => cvInfo.CvCertifications)
+            .Include(cvInfo => cvInfo.WorkExperiences)
             .Where(cvInfo =>
                 cvInfo.CvFile != null &&
                 cvInfo.CvFile.AiDocumentId != null &&
@@ -67,6 +70,20 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<CvInfo>> GetFavoritesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await dbContext.CvInfos
+            .AsNoTracking()
+            .Where(cvInfo => cvInfo.IsMarked)
+            .Include(cvInfo => cvInfo.CvFile)
+            .Include(cvInfo => cvInfo.CvSkills)
+            .Include(cvInfo => cvInfo.CvCertifications)
+            .Include(cvInfo => cvInfo.WorkExperiences)
+            .OrderBy(cvInfo => cvInfo.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(CvInfo cvInfo, CancellationToken cancellationToken = default)
     {
         NormalizeDateTimes(cvInfo);
@@ -83,7 +100,7 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
 
     public async Task UpdateEditableDataAsync(
         CvInfo cvInfo,
-        IReadOnlyCollection<string> certifications,
+        IReadOnlyCollection<string>? certifications,
         CancellationToken cancellationToken = default)
     {
         NormalizeDateTimes(cvInfo);
@@ -91,11 +108,6 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
         await using var transaction =
             await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        var existingCertifications = await dbContext.CvCertifications
-            .Where(certification => certification.CvInfoId == cvInfo.Id)
-            .ToListAsync(cancellationToken);
-
-        dbContext.CvCertifications.RemoveRange(existingCertifications);
         dbContext.Entry(cvInfo).State = EntityState.Modified;
 
         foreach (var experience in cvInfo.WorkExperiences)
@@ -104,15 +116,24 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
                 experience.Id == 0 ? EntityState.Added : EntityState.Modified;
         }
 
-        if (certifications.Count > 0)
+        if (certifications is not null)
         {
-            await dbContext.CvCertifications.AddRangeAsync(
-                certifications.Select(certification => new CvCertification
-                {
-                    CvInfoId = cvInfo.Id,
-                    Name = certification
-                }),
-                cancellationToken);
+            var existingCertifications = await dbContext.CvCertifications
+                .Where(certification => certification.CvInfoId == cvInfo.Id)
+                .ToListAsync(cancellationToken);
+
+            dbContext.CvCertifications.RemoveRange(existingCertifications);
+
+            if (certifications.Count > 0)
+            {
+                await dbContext.CvCertifications.AddRangeAsync(
+                    certifications.Select(certification => new CvCertification
+                    {
+                        CvInfoId = cvInfo.Id,
+                        Name = certification
+                    }),
+                    cancellationToken);
+            }
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

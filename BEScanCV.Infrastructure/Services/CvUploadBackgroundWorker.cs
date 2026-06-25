@@ -344,7 +344,7 @@ public sealed class CvUploadBackgroundWorker(
             {
                 CvFileId = cvFileId,
                 IsMarked = false,
-                Tag = "New",
+                Tag = "new",
                 CreatedAt = now
             };
 

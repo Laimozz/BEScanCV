@@ -8,7 +8,7 @@ namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs")]
-[Authorize]
+//[Authorize]
 public sealed class CvDetailController(ICvDetailService cvDetailService) : ControllerBase
 {
     /// <summary>
@@ -29,7 +29,6 @@ public sealed class CvDetailController(ICvDetailService cvDetailService) : Contr
 
         var cv = await cvDetailService.GetByCvFileIdAsync(
             cvFileId,
-            GetRequestBaseUrl(),
             cancellationToken);
 
         if (cv is null)
@@ -42,7 +41,4 @@ public sealed class CvDetailController(ICvDetailService cvDetailService) : Contr
 
         return Ok(new ApiResponse<CvDetailResponse>(cv));
     }
-
-    private string GetRequestBaseUrl() =>
-        $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
 }
