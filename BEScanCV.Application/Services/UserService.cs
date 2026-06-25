@@ -22,19 +22,19 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
 
     public async Task<GetUsersResponse> GetUsersAsync(
         int page,
-        int pageSize,
+        int limit,
         string? role,
         string? status,
         CancellationToken cancellationToken = default)
     {
         if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 10;
-        if (pageSize > 100) pageSize = 100;
+        if (limit < 1) limit = 10;
+        if (limit > 100) limit = 100;
 
         var (items, totalCount) = await userRepository.GetAllAsync(
-            page, pageSize, role, status, cancellationToken);
+            page, limit, role, status, cancellationToken);
 
-        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        var totalPages = (int)Math.Ceiling((double)totalCount / limit);
 
         var userItems = items.Select(u => new UserItemDto
         {
@@ -49,13 +49,7 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         return new GetUsersResponse
         {
             Items = userItems,
-            Pagination = new UserPaginationDto
-            {
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = totalCount,
-                TotalPages = totalPages
-            }
+            Meta = new PaginationMetaDto(totalCount, page, limit, totalPages)
         };
     }
 

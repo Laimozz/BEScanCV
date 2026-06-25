@@ -21,4 +21,6 @@ public sealed record CurrentUserResponse
 
     [JsonPropertyName("lastActive")]
     public DateTime LastActive { get; set; }
+
+    // TODO: use UserDto
 }

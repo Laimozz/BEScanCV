@@ -8,21 +8,21 @@ namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/users")]
-[Authorize]
+// [Authorize]
 public sealed class UsersController(IUserService userService) : ControllerBase
 {
     /// <summary>
-    /// GET /api/v1/users?page=1&pageSize=10&role=&status=
+    /// GET /api/v1/users?page=1&limit=10&role=&status=
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<ApiResponse<GetUsersResponse>>> GetUsers(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
+        [FromQuery] int limit = 10,
         [FromQuery] string? role = null,
         [FromQuery] string? status = null,
         CancellationToken cancellationToken = default)
     {
-        var response = await userService.GetUsersAsync(page, pageSize, role, status, cancellationToken);
+        var response = await userService.GetUsersAsync(page, limit, role, status, cancellationToken);
         return Ok(new ApiResponse<GetUsersResponse>(response)
         {
             Message = "Users retrieved successfully"

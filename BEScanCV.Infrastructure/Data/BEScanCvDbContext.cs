@@ -19,7 +19,9 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Value converter cho JsonDocument — cần thiết khi dùng InMemory provider
+        // Value converter cho JsonDocument — chỉ cần thiết khi dùng InMemory provider.
+        // PostgreSQL (Npgsql) hỗ trợ JsonDocument native nên không cần convert.
+        var isInMemory = Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
         var jsonDocConverter = new ValueConverter<JsonDocument?, string?>(
             v => v == null ? null : v.RootElement.GetRawText(),
             v => v == null ? null : JsonDocument.Parse(v));
@@ -77,10 +79,10 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             {
                 table.HasCheckConstraint(
                     "cv_infos_tag_check",
-                    "tag IN ('New', 'Contracted', 'In-Process', 'Rejected', 'Hired')");
+                    "tag IN ('new', 'contacted', 'in-process', 'rejected', 'hired')");
                 table.HasCheckConstraint(
                     "cv_infos_work_type_check",
-                    "work_type IS NULL OR work_type IN ('Remote', 'Full-time', 'Part-time')");
+                    "work_type IS NULL OR work_type IN ('remote', 'in-house', 'onsite')");
             });
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id").UseIdentityAlwaysColumn();
@@ -94,14 +96,16 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             entity.Property(e => e.Address).HasColumnName("address").HasMaxLength(500);
             entity.Property(e => e.Summary).HasColumnName("summary").HasColumnType("text");
             entity.Property(e => e.Educations).HasColumnName("educations").HasColumnType("jsonb")
-                  .HasConversion(jsonDocConverter);
+                  .HasConversion(isInMemory ? jsonDocConverter : null);
             entity.Property(e => e.RawText).HasColumnName("raw_text").HasColumnType("text");
-            entity.Property(e => e.ProfileData).HasColumnName("profile_data").HasColumnType("jsonb");
+            entity.Property(e => e.ProfileData).HasColumnName("profile_data").HasColumnType("jsonb")
+                  .HasConversion(isInMemory ? jsonDocConverter : null);
             entity.Property(e => e.QualityScore).HasColumnName("quality_score");
             entity.Property(e => e.QualityReason).HasColumnName("quality_reason").HasColumnType("text");
-            entity.Property(e => e.QualityDetails).HasColumnName("quality_details").HasColumnType("jsonb");
+            entity.Property(e => e.QualityDetails).HasColumnName("quality_details").HasColumnType("jsonb")
+                  .HasConversion(isInMemory ? jsonDocConverter : null);
             entity.Property(e => e.IsMarked).HasColumnName("is_marked").HasDefaultValue(false);
-            entity.Property(e => e.Tag).HasColumnName("tag").HasMaxLength(20).HasDefaultValue("New").IsRequired();
+            entity.Property(e => e.Tag).HasColumnName("tag").HasMaxLength(20).HasDefaultValue("new").IsRequired();
             entity.Property(e => e.WorkType).HasColumnName("work_type").HasMaxLength(20);
             entity.Property(e => e.Note).HasColumnName("note").HasColumnType("text");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");

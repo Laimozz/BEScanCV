@@ -62,7 +62,10 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<BEScanCvDbContext>();
     var useInMemory = builder.Configuration.GetValue<bool>("UseInMemoryDb");
     if (useInMemory)
+    {
         dbContext.Database.EnsureCreated(); // InMemory: tạo schema trong RAM
+        await DatabaseSeeder.SeedUsersAsync(dbContext);
+    }
     else
         dbContext.Database.Migrate();
 }
