@@ -12,6 +12,10 @@ public interface IUserService
         string? status,
         CancellationToken cancellationToken = default);
 
+    Task<GetUserResponse> GetUserByIdAsync(
+        long id,
+        CancellationToken cancellationToken = default);
+
     Task<CreateUserResponse> CreateUserAsync(
         CreateUserRequest request,
         CancellationToken cancellationToken = default);
