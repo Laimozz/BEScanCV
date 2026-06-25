@@ -144,10 +144,10 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         if (string.IsNullOrWhiteSpace(request.NewPassword))
             throw new ArgumentException("New password is required.");
 
-        if (string.IsNullOrWhiteSpace(request.ConfirmNewPassword))
+        if (string.IsNullOrWhiteSpace(request.ConfirmPassword))
             throw new ArgumentException("Confirm new password is required.");
 
-        if (request.NewPassword != request.ConfirmNewPassword)
+        if (request.NewPassword != request.ConfirmPassword)
             throw new ArgumentException("New password and confirm password do not match.");
 
         var user = await userRepository.GetByIdAsync(userId, cancellationToken)
@@ -183,15 +183,12 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
 
     return new CurrentUserResponse
     {
-        User = new UserDto
-        {
-            Id = user.Id,
-            FullName = user.FullName,
-            Email = user.Email,
-            Role = user.Role,
-            Status = user.Status,
-            LastActive = user.LastActive,
-        }
+        Id = user.Id,
+        FullName = user.FullName,
+        Email = user.Email,
+        Role = user.Role,
+        Status = user.Status,
+        LastActive = user.LastActive,
     };
 }
 }
