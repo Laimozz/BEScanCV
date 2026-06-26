@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 namespace BEScanCV.Application.Services;
 
 
-public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService, IJwtService jwtService) : IUserService
+public sealed class UserService(IUserRepository userRepository, IHasher Hasher, IEmailService emailService, IJwtService jwtService) : IUserService
 {
     private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$?-";
 
@@ -99,7 +99,7 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         {
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
-            PasswordHash = passwordHasher.Hash(password),
+            PasswordHash = Hasher.Hash(password),
             Role = string.IsNullOrWhiteSpace(request.Role) ? "recruiter" : request.Role.ToLowerInvariant(),
             Status = "active",
             CreatedAt = DateTime.UtcNow,
@@ -174,10 +174,10 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         var user = await userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new KeyNotFoundException("User not found");
 
-        if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+        if (!Hasher.Verify(request.CurrentPassword, user.PasswordHash))
             throw new InvalidOperationException("Current password is incorrect.");
 
-        user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+        user.PasswordHash = Hasher.Hash(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;
 
         await userRepository.UpdateAsync(user, cancellationToken);
@@ -186,8 +186,8 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         => userRepository.GetByEmailAsync(email, cancellationToken);
 
-    public bool VerifyPassword(string password, string passwordHash)
-        => passwordHasher.Verify(password, passwordHash);
+    public bool VerifyPassword(string password, string Hash)
+        => Hasher.Verify(password, Hash);
 
     private static string GeneratePassword(int length)
     {
