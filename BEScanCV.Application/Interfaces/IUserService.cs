@@ -32,5 +32,5 @@ public interface IUserService
 
     Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
     bool VerifyPassword(string password, string passwordHash);
-    Task<CurrentUserResponse?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken);
+    Task<UserDto?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken);
 }

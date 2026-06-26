@@ -107,7 +107,7 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
 
     [HttpGet("me")]
     [Authorize] 
-    public async Task<ActionResult<ApiResponse<CurrentUserResponse>>> GetCurrentUser(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<UserDto>>> GetCurrentUser(CancellationToken cancellationToken)
     {
         try
         {
@@ -118,7 +118,7 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
                 return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid token claims", StatusCode = 401 });
 
             var user = await userService.GetCurrentUserAsync(userId, cancellationToken);
-            return Ok(new ApiResponse<CurrentUserResponse>(user));
+            return Ok(new ApiResponse<UserDto>(user));
         }
         catch (KeyNotFoundException)
         {

@@ -79,8 +79,8 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
             PasswordHash = passwordHasher.Hash(password),
-            Role = string.IsNullOrWhiteSpace(request.Role) ? "Recruiter" : request.Role,
-            Status = "Active",
+            Role = string.IsNullOrWhiteSpace(request.Role) ? "recruiter" : request.Role,
+            Status = "active",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -176,14 +176,12 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
             .ToArray());
     }
 
-    public async Task<CurrentUserResponse?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken)
+    public async Task<UserDto?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken)
 {
     var user = await userRepository.GetByIdAsync(userId, cancellationToken)
         ?? throw new KeyNotFoundException("User not found");
 
-    return new CurrentUserResponse
-    {
-        User = new UserDto
+        return new UserDto
         {
             Id = user.Id,
             FullName = user.FullName,
@@ -191,7 +189,7 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
             Role = user.Role,
             Status = user.Status,
             LastActive = user.LastActive,
-        }
-    };
+        };
+    
 }
 }
