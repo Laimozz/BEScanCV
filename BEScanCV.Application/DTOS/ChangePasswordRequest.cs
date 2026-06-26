@@ -10,6 +10,6 @@ public class ChangePasswordRequest
     [JsonPropertyName("newPassword")]
     public string NewPassword { get; set; } = string.Empty;
 
-    [JsonPropertyName("confirmNewPassword")]
-    public string ConfirmNewPassword { get; set; } = string.Empty;
+    [JsonPropertyName("confirmPassword")]
+    public string ConfirmPassword { get; set; } = string.Empty;
 }

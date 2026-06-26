@@ -28,6 +28,56 @@ public sealed class UsersController(IUserService userService) : ControllerBase
             Message = "Users retrieved successfully"
         });
     }
+    [HttpGet("{id:long}")]
+    public async Task<ActionResult<ApiResponse<GetUserResponse>>> GetUserById(
+        long id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await userService.GetUserByIdAsync(id, cancellationToken);
+            if (response is null)
+            {
+                return NotFound(new ApiResponse<GetUserResponse>(null)
+                {
+                    Message = "User not found",
+                    Success = false,
+                    StatusCode = StatusCodes.Status404NotFound
+                });
+            }
+            return Ok(new ApiResponse<GetUserResponse>(response)
+            {
+                Message = "User retrieved successfully"
+            });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new ApiResponse<object>(null)
+            {
+                Success = false,
+                Message = "User not found",
+                StatusCode = 404
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ApiResponse<object>(null)
+            {
+                Success = false,
+                Message = ex.Message,
+                StatusCode = 400
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ApiResponse<object>(null)
+            {
+                Success = false,
+                Message = ex.Message,
+                StatusCode = 400
+            });
+        }
+    }
 
     /// <summary>
     /// POST /api/v1/users
