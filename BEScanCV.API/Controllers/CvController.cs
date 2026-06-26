@@ -105,16 +105,16 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
     }
 
-    [HttpPut("{cvFileId:long}")]
+    [HttpPut("{cvInfoId:long}")]
     public async Task<ActionResult<ApiResponse<CvUpdateResponse>>> UpdateCv(
-        long cvFileId,
+        long cvInfoId,
         [FromBody] CvUpdateRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
             var response = await cvService.UpdateAsync(
-                cvFileId,
+                cvInfoId,
                 request,
                 cancellationToken);
 
@@ -134,14 +134,14 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
     }
 
-    [HttpDelete("{cvFileId:long}")]
+    [HttpDelete("{cvInfoId:long}")]
     public async Task<ActionResult<ApiResponse<object>>> DeleteCv(
-        long cvFileId,
+        long cvInfoId,
         CancellationToken cancellationToken)
     {
         try
         {
-            await cvService.DeleteAsync(cvFileId, cancellationToken);
+            await cvService.DeleteAsync(cvInfoId, cancellationToken);
 
             return Ok(new ApiResponse<object>(null)
             {
@@ -213,6 +213,14 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
     }
 
+    private string BuildWebSocketEndpoint(string endpoint)
+    {
+        var scheme = Request.IsHttps ? "wss" : "ws";
+        var path = endpoint.StartsWith('/') ? endpoint : $"/{endpoint}";
+
+        return $"{scheme}://{Request.Host}{Request.PathBase}{path}";
+    }
+
     private long? GetCurrentUserId()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
@@ -225,11 +233,4 @@ public sealed class CvController(ICvService cvService) : ControllerBase
             : null;
     }
 
-    private string BuildWebSocketEndpoint(string endpoint)
-    {
-        var scheme = Request.IsHttps ? "wss" : "ws";
-        var path = endpoint.StartsWith('/') ? endpoint : $"/{endpoint}";
-
-        return $"{scheme}://{Request.Host}{Request.PathBase}{path}";
-    }
 }

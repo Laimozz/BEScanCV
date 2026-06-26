@@ -2,15 +2,15 @@ using BEScanCV.Application.Interfaces;
 
 namespace BEScanCV.Infrastructure.Services;
 
-public sealed class BcryptHasher : IHasher
+public sealed class BcryptPasswordHasher : IPasswordHasher
 {
-    public string Hash(string stringToBeHashed)
+    public string Hash(string password)
     {
-        return BCrypt.Net.BCrypt.HashPassword(stringToBeHashed);
+        return BCrypt.Net.BCrypt.HashPassword(password);
     }
 
-    public bool Verify(string stringToBeVerified, string hashedString)
+    public bool Verify(string password, string passwordHash)
     {
-        return BCrypt.Net.BCrypt.Verify(stringToBeVerified, hashedString);
+        return BCrypt.Net.BCrypt.Verify(password, passwordHash);
     }
 }

@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<ICvDetailService, CvDetailService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ICvService, CvService>();
+        services.AddScoped<ITalentPoolService, TalentPoolService>();
 
         return services;
     }

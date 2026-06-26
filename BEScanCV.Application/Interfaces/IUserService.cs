@@ -7,7 +7,7 @@ public interface IUserService
 {
     Task<GetUsersResponse> GetUsersAsync(
         int page,
-        int pageSize,
+        int limit,
         string? role,
         string? status,
         CancellationToken cancellationToken = default);
@@ -32,4 +32,5 @@ public interface IUserService
 
     Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
     bool VerifyPassword(string password, string passwordHash);
+    Task<UserDto?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken);
 }

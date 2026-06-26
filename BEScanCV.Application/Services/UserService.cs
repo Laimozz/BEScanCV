@@ -6,7 +6,11 @@ using System.Security.Cryptography;
 
 namespace BEScanCV.Application.Services;
 
+<<<<<<< HEAD
 public sealed class UserService(IUserRepository userRepository, IHasher passwordHasher, IEmailService emailService) : IUserService
+=======
+public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService, IJwtService jwtService) : IUserService
+>>>>>>> origin/main
 {
     private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$?-";
 
@@ -22,19 +26,19 @@ public sealed class UserService(IUserRepository userRepository, IHasher password
 
     public async Task<GetUsersResponse> GetUsersAsync(
         int page,
-        int pageSize,
+        int limit,
         string? role,
         string? status,
         CancellationToken cancellationToken = default)
     {
         if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 10;
-        if (pageSize > 100) pageSize = 100;
+        if (limit < 1) limit = 10;
+        if (limit > 100) limit = 100;
 
         var (items, totalCount) = await userRepository.GetAllAsync(
-            page, pageSize, role, status, cancellationToken);
+            page, limit, role, status, cancellationToken);
 
-        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        var totalPages = (int)Math.Ceiling((double)totalCount / limit);
 
         var userItems = items.Select(u => new UserItemDto
         {
@@ -49,13 +53,7 @@ public sealed class UserService(IUserRepository userRepository, IHasher password
         return new GetUsersResponse
         {
             Items = userItems,
-            Pagination = new UserPaginationDto
-            {
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = totalCount,
-                TotalPages = totalPages
-            }
+            Meta = new PaginationMetaDto(totalCount, page, limit, totalPages)
         };
     }
 
@@ -85,8 +83,8 @@ public sealed class UserService(IUserRepository userRepository, IHasher password
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
             PasswordHash = passwordHasher.Hash(password),
-            Role = string.IsNullOrWhiteSpace(request.Role) ? "Recruiter" : request.Role,
-            Status = "Active",
+            Role = string.IsNullOrWhiteSpace(request.Role) ? "recruiter" : request.Role,
+            Status = "active",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -181,4 +179,21 @@ public sealed class UserService(IUserRepository userRepository, IHasher password
             .Select(_ => chars[Random.Shared.Next(chars.Length)])
             .ToArray());
     }
+
+    public async Task<UserDto?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken)
+{
+    var user = await userRepository.GetByIdAsync(userId, cancellationToken)
+        ?? throw new KeyNotFoundException("User not found");
+
+        return new UserDto
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            Role = user.Role,
+            Status = user.Status,
+            LastActive = user.LastActive,
+        };
+    
+}
 }
