@@ -13,12 +13,12 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
 
     private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Admin", "Recruiter", "Interviewer"
+        "admin", "recruiter", "interviewer"
     };
 
     private static readonly HashSet<string> ValidStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Active", "Inactive"
+        "active", "inactive"
     };
 
     public async Task<GetUsersResponse> GetUsersAsync(
@@ -100,7 +100,7 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
             PasswordHash = passwordHasher.Hash(password),
-            Role = string.IsNullOrWhiteSpace(request.Role) ? "recruiter" : request.Role,
+            Role = string.IsNullOrWhiteSpace(request.Role) ? "recruiter" : request.Role.ToLowerInvariant(),
             Status = "active",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

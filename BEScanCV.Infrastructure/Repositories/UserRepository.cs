@@ -49,13 +49,20 @@ public sealed class UserRepository(BEScanCvDbContext dbContext) : IUserRepositor
 
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)
     {
+        NormalizeDateTimes(user);
         await dbContext.Users.AddAsync(user, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(User user, CancellationToken cancellationToken = default)
     {
-        dbContext.Users.Update(user);
+        NormalizeDateTimes(user);
+
+        if (dbContext.Entry(user).State == EntityState.Detached)
+        {
+            dbContext.Users.Update(user);
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -75,5 +82,24 @@ public sealed class UserRepository(BEScanCvDbContext dbContext) : IUserRepositor
     {
         return dbContext.Users
             .AnyAsync(user => user.Email == email && user.Id != excludeUserId, cancellationToken);
+    }
+
+    private static void NormalizeDateTimes(User user)
+    {
+        user.CreatedAt = DateTimeUtcNormalizer.Normalize(user.CreatedAt);
+        user.UpdatedAt = DateTimeUtcNormalizer.Normalize(user.UpdatedAt);
+        user.LastActive = NormalizeLastActive(user.LastActive, user.UpdatedAt);
+    }
+
+    private static DateTime NormalizeLastActive(DateTime lastActive, DateTime fallback)
+    {
+        if (lastActive == DateTime.MinValue || lastActive == DateTime.MaxValue)
+        {
+            return fallback == DateTime.MinValue || fallback == DateTime.MaxValue
+                ? DateTime.UtcNow
+                : DateTimeUtcNormalizer.Normalize(fallback);
+        }
+
+        return DateTimeUtcNormalizer.Normalize(lastActive);
     }
 }
