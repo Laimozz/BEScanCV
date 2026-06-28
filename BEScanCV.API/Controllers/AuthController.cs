@@ -58,7 +58,7 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         return Ok(new ApiResponse<object>(null) { Message = "Logged out successfully", StatusCode = 200 });
     }
 
-     [HttpPost("change-password")]
+    [HttpPost("change-password")]
     public async Task<ActionResult<ApiResponse<object>>> ChangePassword(
         [FromBody] ChangePasswordRequest request,
         CancellationToken cancellationToken)
@@ -123,6 +123,35 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         catch (KeyNotFoundException)
         {
             return NotFound(new ApiResponse<object>(null) { Success = false, Message = "User not found", StatusCode = 404 });
+        }
+    }
+
+    [HttpPatch("me")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<UserDto>>> UpdateProfile(
+        [FromBody] UpdateProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (request.HasExtraProperties)
+                return BadRequest(new ApiResponse<object>(null) { Success = false, Message = "Only fullName field is allowed to be updated", StatusCode = 400 });
+
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!long.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid token claims", StatusCode = 401 });
+
+            var user = await userService.UpdateProfileAsync(userId, request.FullName, cancellationToken);
+            return Ok(new ApiResponse<UserDto>(user) { Message = "Profile updated successfully", StatusCode = 200 });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new ApiResponse<object>(null) { Success = false, Message = "User not found", StatusCode = 404 });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ApiResponse<object>(null) { Success = false, Message = ex.Message, StatusCode = 400 });
         }
     }
 

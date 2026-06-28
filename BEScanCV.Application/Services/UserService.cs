@@ -2,10 +2,8 @@ using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
-using System.Security.Cryptography;
 
 namespace BEScanCV.Application.Services;
-
 
 public sealed class UserService(IUserRepository userRepository, IHasher Hasher, IEmailService emailService, IJwtService jwtService) : IUserService
 {
@@ -61,7 +59,7 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
 
         return new GetUserResponse
         {
-           User = new UserItemDto
+            User = new UserItemDto
             {
                 Id = user.Id,
                 FullName = user.FullName,
@@ -71,7 +69,6 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
                 LastActive = user.UpdatedAt
             }
         };
-        
     }
 
     public async Task<CreateUserResponse> CreateUserAsync(
@@ -198,9 +195,9 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
     }
 
     public async Task<UserDto?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken)
-{
-    var user = await userRepository.GetByIdAsync(userId, cancellationToken)
-        ?? throw new KeyNotFoundException("User not found");
+    {
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException("User not found");
 
         return new UserDto
         {
@@ -211,6 +208,29 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
             Status = user.Status,
             LastActive = user.LastActive,
         };
-    
-}
+    }
+
+    public async Task<UserDto> UpdateProfileAsync(long userId, string fullName, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException("User not found");
+
+        if (string.IsNullOrWhiteSpace(fullName))
+            throw new ArgumentException("Full name cannot be empty.");
+
+        user.FullName = fullName.Trim();
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await userRepository.UpdateAsync(user, cancellationToken);
+
+        return new UserDto
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            Role = user.Role,
+            Status = user.Status,
+            LastActive = user.UpdatedAt,
+        };
+    }
 }
