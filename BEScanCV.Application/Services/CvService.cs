@@ -22,6 +22,8 @@ public sealed class CvService(
     IUploadProgressNotifier uploadProgressNotifier) : ICvService
 {
     private static readonly string[] AllowedExtensions = [".pdf", ".docx", ".doc"];
+    private static readonly string[] AllowedTags = ["new", "contacted", "in-process", "rejected", "hired"];
+    private static readonly string[] AllowedWorkTypes = ["remote", "in-house", "onsite"];
     private const int MaxFilesPerRequest = 5;
     private const long MaxFileSizeBytes = 20 * 1024 * 1024;
     private const long DefaultUploadedBy = 1;
@@ -243,6 +245,8 @@ public sealed class CvService(
             cvInfo.Educations,
             request.Educations);
         cvInfo.IsMarked = request.IsMarked ?? cvInfo.IsMarked;
+        cvInfo.Tag = NormalizeAllowedUpdateValue(request.Tag, cvInfo.Tag) ?? cvInfo.Tag;
+        cvInfo.WorkType = NormalizeAllowedUpdateValue(request.WorkType, cvInfo.WorkType);
         cvInfo.Note = NormalizeUpdateValue(request.Note, cvInfo.Note);
         cvInfo.UpdatedAt = DateTime.UtcNow;
 
@@ -326,6 +330,8 @@ public sealed class CvService(
                 })
                 .ToArray(),
             IsMarked = cvInfo.IsMarked,
+            Tag = cvInfo.Tag,
+            WorkType = cvInfo.WorkType,
             Note = cvInfo.Note,
             UpdatedAt = cvInfo.UpdatedAt
         };
@@ -567,6 +573,20 @@ public sealed class CvService(
             throw new CvUploadValidationException("address cannot exceed 500 characters.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.Tag) &&
+            !AllowedTags.Contains(request.Tag.Trim(), StringComparer.OrdinalIgnoreCase))
+        {
+            throw new CvUploadValidationException(
+                $"tag must be one of: {string.Join(", ", AllowedTags)}.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.WorkType) &&
+            !AllowedWorkTypes.Contains(request.WorkType.Trim(), StringComparer.OrdinalIgnoreCase))
+        {
+            throw new CvUploadValidationException(
+                $"work_type must be one of: {string.Join(", ", AllowedWorkTypes)}.");
+        }
+
         if ((request.Educations ?? []).Any(
                 education => education.University?.Trim().Length > 500))
         {
@@ -642,6 +662,9 @@ public sealed class CvService(
 
     private static string? NormalizeUpdateValue(string? requestedValue, string? currentValue) =>
         string.IsNullOrWhiteSpace(requestedValue) ? currentValue : requestedValue.Trim();
+
+    private static string? NormalizeAllowedUpdateValue(string? requestedValue, string? currentValue) =>
+        string.IsNullOrWhiteSpace(requestedValue) ? currentValue : requestedValue.Trim().ToLowerInvariant();
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

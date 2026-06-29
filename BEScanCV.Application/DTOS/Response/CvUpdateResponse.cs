@@ -35,6 +35,12 @@ public sealed class CvUpdateResponse
     [JsonPropertyName("is_marked")]
     public bool IsMarked { get; set; }
 
+    [JsonPropertyName("tag")]
+    public string Tag { get; set; } = string.Empty;
+
+    [JsonPropertyName("work_type")]
+    public string? WorkType { get; set; }
+
     [JsonPropertyName("note")]
     public string? Note { get; set; }
 
