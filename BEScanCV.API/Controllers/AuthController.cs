@@ -134,8 +134,6 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
     {
         try
         {
-            if (request.HasExtraProperties)
-                return BadRequest(new ApiResponse<object>(null) { Success = false, Message = "Only fullName field is allowed to be updated", StatusCode = 400 });
 
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
