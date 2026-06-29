@@ -67,7 +67,7 @@ public sealed class CvSearchService(
     public async Task<IReadOnlyCollection<CvFavoriteResponse>> GetFavoritesAsync(
         CancellationToken cancellationToken = default)
     {
-        var favorites = await cvInfoRepository.GetFavoritesAsync(cancellationToken);
+        var (favorites, _) = await cvInfoRepository.GetFavoritesAsync(1, int.MaxValue, cancellationToken);
         var baseUrl = configuration["PublicBaseUrl"];
 
         return favorites

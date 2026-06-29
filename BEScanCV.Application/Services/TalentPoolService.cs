@@ -18,22 +18,16 @@ public sealed class TalentPoolService(
         var page = request.Page < 1 ? 1 : request.Page;
         var limit = request.Limit > 0 ? request.Limit : 10;
 
-        var cvs = await cvInfoRepository.GetFavoritesAsync(cancellationToken);
+        var (cvs, total) = await cvInfoRepository.GetFavoritesAsync(page, limit, cancellationToken);
 
         var baseUrl = configuration["PublicBaseUrl"];
         var items = cvs
             .Select(cv => CvDataResponseMapper.Map<TalentPoolItemResponse>(cv, baseUrl))
             .ToArray();
 
-        var total = items.Length;
         var totalPages = total == 0 ? 0 : (int)Math.Ceiling(total / (double)limit);
-        var paged = items
-            .Skip((page - 1) * limit)
-            .Take(limit)
-            .ToArray();
-
         var meta = new PaginationMetaDto(total, page, limit, totalPages);
-        return new TalentPoolResponse(paged, meta);
+        return new TalentPoolResponse(items, meta);
     }
 
     public async Task<(bool isMarked, object data)> MarkTalentAsync(
