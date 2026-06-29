@@ -2,12 +2,10 @@ using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
-using System.Security.Cryptography;
 
 namespace BEScanCV.Application.Services;
 
-
-public sealed class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher, IEmailService emailService, IJwtService jwtService) : IUserService
+public sealed class UserService(IUserRepository userRepository, IHasher Hasher, IEmailService emailService, IJwtService jwtService) : IUserService
 {
     private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$?-";
 
@@ -61,7 +59,7 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
 
         return new GetUserResponse
         {
-           User = new UserItemDto
+            User = new UserItemDto
             {
                 Id = user.Id,
                 FullName = user.FullName,
@@ -71,7 +69,6 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
                 LastActive = user.UpdatedAt
             }
         };
-        
     }
 
     public async Task<CreateUserResponse> CreateUserAsync(
@@ -99,7 +96,7 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         {
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
-            PasswordHash = passwordHasher.Hash(password),
+            PasswordHash = Hasher.Hash(password),
             Role = string.IsNullOrWhiteSpace(request.Role) ? "recruiter" : request.Role.ToLowerInvariant(),
             Status = "active",
             CreatedAt = DateTime.UtcNow,
@@ -174,10 +171,10 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
         var user = await userRepository.GetByIdAsync(userId, cancellationToken)
             ?? throw new KeyNotFoundException("User not found");
 
-        if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+        if (!Hasher.Verify(request.CurrentPassword, user.PasswordHash))
             throw new InvalidOperationException("Current password is incorrect.");
 
-        user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+        user.PasswordHash = Hasher.Hash(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;
 
         await userRepository.UpdateAsync(user, cancellationToken);
@@ -186,8 +183,8 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         => userRepository.GetByEmailAsync(email, cancellationToken);
 
-    public bool VerifyPassword(string password, string passwordHash)
-        => passwordHasher.Verify(password, passwordHash);
+    public bool VerifyPassword(string password, string Hash)
+        => Hasher.Verify(password, Hash);
 
     private static string GeneratePassword(int length)
     {
@@ -198,9 +195,9 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
     }
 
     public async Task<UserDto?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken)
-{
-    var user = await userRepository.GetByIdAsync(userId, cancellationToken)
-        ?? throw new KeyNotFoundException("User not found");
+    {
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException("User not found");
 
         return new UserDto
         {
@@ -211,6 +208,29 @@ public sealed class UserService(IUserRepository userRepository, IPasswordHasher 
             Status = user.Status,
             LastActive = user.LastActive,
         };
-    
-}
+    }
+
+    public async Task<UserDto> UpdateProfileAsync(long userId, string fullName, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException("User not found");
+
+        if (string.IsNullOrWhiteSpace(fullName))
+            throw new ArgumentException("Full name cannot be empty.");
+
+        user.FullName = fullName.Trim();
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await userRepository.UpdateAsync(user, cancellationToken);
+
+        return new UserDto
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            Role = user.Role,
+            Status = user.Status,
+            LastActive = user.UpdatedAt,
+        };
+    }
 }

@@ -14,7 +14,7 @@ namespace BEScanCV.Infrastructure.Services;
 public sealed class JwtService(
     IOptions<JwtOptions> jwtOptions,
     IRefreshTokenRepository refreshTokenRepo,
-    IPasswordHasher passwordHasher) : IJwtService
+    IHasher hasher) : IJwtService
 {
     private readonly JwtOptions _options = jwtOptions.Value;
 
@@ -52,7 +52,7 @@ public sealed class JwtService(
         var refreshEntity = new RefreshToken
         {
             UserId = user.Id,
-            TokenHash = passwordHasher.Hash(refreshToken),
+            TokenHash = hasher.Hash(refreshToken),
             ExpiresAt = refreshExpiry,
             CreatedAt = DateTime.UtcNow
         };
@@ -91,7 +91,7 @@ public sealed class JwtService(
 
     public async Task<CurrentUserWithTokenResponse> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
     {
-        var tokenHash = passwordHasher.Hash(refreshToken);
+        var tokenHash = hasher.Hash(refreshToken);
         var stored = await refreshTokenRepo.GetByTokenHashAsync(tokenHash, ct);
 
         if (stored == null || stored.RevokedAt != null || stored.ExpiresAt < DateTime.UtcNow)
@@ -116,7 +116,7 @@ public sealed class JwtService(
 
     public async Task RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct = default)
     {
-        var tokenHash = passwordHasher.Hash(refreshToken);
+        var tokenHash = hasher.Hash(refreshToken);
         var stored = await refreshTokenRepo.GetByTokenHashAsync(tokenHash, ct);
 
         if (stored != null && stored.RevokedAt == null)
