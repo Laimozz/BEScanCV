@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
@@ -188,10 +189,9 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
 
     private static string GeneratePassword(int length)
     {
-        const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         return new string(Enumerable.Range(0, length)
-            .Select(_ => chars[Random.Shared.Next(chars.Length)])
-            .ToArray());
+        .Select(_ => TemporaryPasswordCharacters[RandomNumberGenerator.GetInt32(TemporaryPasswordCharacters.Length)])
+        .ToArray());
     }
 
     public async Task<UserDto?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken)
