@@ -9,7 +9,7 @@ namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/users")]
-// [Authorize]
+[Authorize]
 public sealed class UsersController(IUserService userService) : ControllerBase
 {
     /// <summary>

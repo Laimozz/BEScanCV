@@ -110,31 +110,31 @@ public sealed class CvGetAllService(
 
     private static bool MatchesFilter(CvInfo cv, CvGetAllFilterDto filter)
     {
-        if (!MatchesExperience(cv.TotalExperienceYears, filter.total_experience_years))
+        if (!MatchesExperience(cv.TotalExperienceYears, filter.TotalExperienceYears))
             return false;
 
-        if (!string.IsNullOrWhiteSpace(filter.location) &&
-            (string.IsNullOrWhiteSpace(cv.Address) || !Normalize(cv.Address).Contains(Normalize(filter.location))))
+        if (!string.IsNullOrWhiteSpace(filter.Location) &&
+            (string.IsNullOrWhiteSpace(cv.Address) || !Normalize(cv.Address).Contains(Normalize(filter.Location))))
         {
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(filter.position) &&
-            (string.IsNullOrWhiteSpace(cv.Position) || !Normalize(cv.Position).Contains(Normalize(filter.position))))
+        if (!string.IsNullOrWhiteSpace(filter.Position) &&
+            (string.IsNullOrWhiteSpace(cv.Position) || !Normalize(cv.Position).Contains(Normalize(filter.Position))))
         {
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(filter.work_type) &&
-            (string.IsNullOrWhiteSpace(cv.WorkType) || !Normalize(cv.WorkType).Contains(Normalize(filter.work_type))))
+        if (!string.IsNullOrWhiteSpace(filter.WorkType) &&
+            (string.IsNullOrWhiteSpace(cv.WorkType) || !Normalize(cv.WorkType).Contains(Normalize(filter.WorkType))))
         {
             return false;
         }
 
 
-        if (!string.IsNullOrWhiteSpace(filter.skills))
+        if (!string.IsNullOrWhiteSpace(filter.Skills))
         {
-            var requiredSkills = filter.skills
+            var requiredSkills = filter.Skills
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(Normalize)
                 .Where(s => !string.IsNullOrWhiteSpace(s))

@@ -9,7 +9,7 @@ namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs")]
-//[Authorize]
+[Authorize]
 public sealed class TalentPoolController(ITalentPoolService talentPoolService) : ControllerBase
 {
     /// <summary>

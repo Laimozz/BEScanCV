@@ -1,10 +1,17 @@
+using System.Text.Json.Serialization;
+
 namespace BEScanCV.Application.DTOS;
 
 public class CvGetAllFilterDto
 {
-    public int? total_experience_years  { get; set; }
-    public string? skills { get; set; }
-    public string? position { get; set; }
-    public string? location { get; set; }
-    public string? work_type { get; set; }
+    [JsonPropertyName("total_experience_years")]
+    public int? TotalExperienceYears  { get; set; }
+    [JsonPropertyName("skills")]
+    public string? Skills { get; set; }
+    [JsonPropertyName("position")]
+    public string? Position { get; set; }
+    [JsonPropertyName("location")]
+    public string? Location { get; set; }
+    [JsonPropertyName("work_type")]
+    public string? WorkType { get; set; }
 }
