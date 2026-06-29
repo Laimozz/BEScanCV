@@ -13,8 +13,7 @@ namespace BEScanCV.Infrastructure.Services;
 
 public sealed class JwtService(
     IOptions<JwtOptions> jwtOptions,
-    IRefreshTokenRepository refreshTokenRepo,
-    IHasher hasher) : IJwtService
+    IRefreshTokenRepository refreshTokenRepo) : IJwtService
 {
     private readonly JwtOptions _options = jwtOptions.Value;
 
@@ -52,7 +51,7 @@ public sealed class JwtService(
         var refreshEntity = new RefreshToken
         {
             UserId = user.Id,
-            TokenHash = hasher.Hash(refreshToken),
+            TokenHash = ComputeSha256Hash(refreshToken),
             ExpiresAt = refreshExpiry,
             CreatedAt = DateTime.UtcNow
         };
@@ -91,7 +90,7 @@ public sealed class JwtService(
 
     public async Task<CurrentUserWithTokenResponse> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
     {
-        var tokenHash = hasher.Hash(refreshToken);
+        var tokenHash = ComputeSha256Hash(refreshToken);
         var stored = await refreshTokenRepo.GetByTokenHashAsync(tokenHash, ct);
 
         if (stored == null || stored.RevokedAt != null || stored.ExpiresAt < DateTime.UtcNow)
@@ -116,10 +115,17 @@ public sealed class JwtService(
 
     public async Task RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct = default)
     {
-        var tokenHash = hasher.Hash(refreshToken);
+        var tokenHash = ComputeSha256Hash(refreshToken);
         var stored = await refreshTokenRepo.GetByTokenHashAsync(tokenHash, ct);
 
         if (stored != null && stored.RevokedAt == null)
             await refreshTokenRepo.RevokeAsync(stored, ct);
+    }
+
+    private static string ComputeSha256Hash(string rawData)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(rawData));
+        return Convert.ToBase64String(bytes);
     }
 }
