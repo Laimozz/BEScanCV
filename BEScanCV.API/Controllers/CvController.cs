@@ -146,7 +146,8 @@ public sealed class CvController(ICvService cvService) : ControllerBase
 
             return Ok(new ApiResponse<object>(null)
             {
-                Message = "CV deleted successfully."
+                Message = "CV deleted successfully.",
+                StatusCode = 204
             });
         }
         catch (CvUploadValidationException ex)
