@@ -50,15 +50,6 @@ public sealed class UsersController(IUserService userService) : ControllerBase
                 Message = "User retrieved successfully"
             });
         }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ApiResponse<object>(null)
-            {
-                Success = false,
-                Message = "User not found",
-                StatusCode = 404
-            });
-        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new ApiResponse<object>(null)
