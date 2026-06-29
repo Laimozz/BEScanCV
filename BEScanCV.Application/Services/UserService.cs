@@ -45,7 +45,7 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
             Email = u.Email,
             Role = u.Role,
             Status = u.Status,
-            LastActive = u.UpdatedAt
+            LastActive = u.LastActive
         }).ToList();
 
         return new GetUsersResponse

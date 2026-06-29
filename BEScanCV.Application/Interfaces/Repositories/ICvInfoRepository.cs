@@ -1,3 +1,4 @@
+using BEScanCV.Application.DTOS;
 using BEScanCV.Domain.Entities;
 
 namespace BEScanCV.Application.Interfaces.Repositories;
@@ -13,7 +14,15 @@ public interface ICvInfoRepository
         IReadOnlyCollection<string> aiDocumentIds,
         CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<CvInfo>> GetWithSkillsAsync(CancellationToken cancellationToken = default);
-    Task<IReadOnlyCollection<CvInfo>> GetFavoritesAsync(
+    Task<(IReadOnlyCollection<CvInfo> Items, int TotalCount)> GetFavoritesAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+    Task<(IReadOnlyCollection<CvInfo> Items, int TotalCount)> GetPagedAsync(
+        int page,
+        int pageSize,
+        string? search,
+        CvGetAllFilterDto? filter,
         CancellationToken cancellationToken = default);
     Task AddAsync(CvInfo cvInfo, CancellationToken cancellationToken = default);
     Task UpdateAsync(CvInfo cvInfo, CancellationToken cancellationToken = default);

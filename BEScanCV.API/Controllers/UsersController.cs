@@ -9,7 +9,7 @@ namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/users")]
-// [Authorize]
+[Authorize]
 public sealed class UsersController(IUserService userService) : ControllerBase
 {
     /// <summary>
@@ -49,15 +49,6 @@ public sealed class UsersController(IUserService userService) : ControllerBase
             return Ok(new ApiResponse<GetUserResponse>(response)
             {
                 Message = "User retrieved successfully"
-            });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ApiResponse<object>(null)
-            {
-                Success = false,
-                Message = "User not found",
-                StatusCode = 404
             });
         }
         catch (InvalidOperationException ex)

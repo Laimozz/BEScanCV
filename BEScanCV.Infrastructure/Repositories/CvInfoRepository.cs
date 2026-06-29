@@ -1,3 +1,4 @@
+using BEScanCV.Application.DTOS;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
 using BEScanCV.Infrastructure.Data;
@@ -70,18 +71,122 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyCollection<CvInfo>> GetFavoritesAsync(
+    public async Task<(IReadOnlyCollection<CvInfo> Items, int TotalCount)> GetFavoritesAsync(
+        int page,
+        int pageSize,
         CancellationToken cancellationToken = default)
     {
-        return await dbContext.CvInfos
+        var query = dbContext.CvInfos
             .AsNoTracking()
             .Where(cvInfo => cvInfo.IsMarked)
             .Include(cvInfo => cvInfo.CvFile)
             .Include(cvInfo => cvInfo.CvSkills)
             .Include(cvInfo => cvInfo.CvCertifications)
             .Include(cvInfo => cvInfo.WorkExperiences)
-            .OrderBy(cvInfo => cvInfo.Id)
+            .OrderBy(cvInfo => cvInfo.Id);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task<(IReadOnlyCollection<CvInfo> Items, int TotalCount)> GetPagedAsync(
+        int page,
+        int pageSize,
+        string? search,
+        CvGetAllFilterDto? filter,
+        CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.CvInfos
+            .AsNoTracking()
+            .Include(cvInfo => cvInfo.CvFile)
+                .ThenInclude(cvFile => cvFile!.Uploader)
+            .Include(cvInfo => cvInfo.CvSkills)
+            .Include(cvInfo => cvInfo.CvCertifications)
+            .Include(cvInfo => cvInfo.WorkExperiences)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = search.Trim().ToLowerInvariant();
+            query = query.Where(cv =>
+                (cv.FullName != null && EF.Functions.ILike(cv.FullName.ToLower(), $"%{searchTerm}%")) ||
+                (cv.Email != null && EF.Functions.ILike(cv.Email.ToLower(), $"%{searchTerm}%")) ||
+                (cv.Position != null && EF.Functions.ILike(cv.Position.ToLower(), $"%{searchTerm}%")) ||
+                (cv.Address != null && EF.Functions.ILike(cv.Address.ToLower(), $"%{searchTerm}%")) ||
+                (cv.RawText != null && EF.Functions.ILike(cv.RawText.ToLower(), $"%{searchTerm}%")) ||
+                (cv.Educations != null && EF.Functions.ILike(cv.Educations.RootElement.ToString().ToLower(), $"%{searchTerm}%")) ||
+                (cv.ProfileData != null && EF.Functions.ILike(cv.ProfileData.RootElement.ToString().ToLower(), $"%{searchTerm}%")) ||
+                cv.CvSkills.Any(skill => EF.Functions.ILike(skill.Name.ToLower(), $"%{searchTerm}%")));
+        }
+
+        if (filter != null)
+        {
+            if (filter.TotalExperienceYears.HasValue)
+            {
+                query = filter.TotalExperienceYears.Value switch
+                {
+                    0 => query.Where(cv => cv.TotalExperienceYears <= 1),
+                    1 => query.Where(cv => cv.TotalExperienceYears >= 1 && cv.TotalExperienceYears <= 3),
+                    3 => query.Where(cv => cv.TotalExperienceYears >= 3 && cv.TotalExperienceYears <= 5),
+                    5 => query.Where(cv => cv.TotalExperienceYears >= 5),
+                    _ => query
+                };
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Location))
+            {
+                var location = filter.Location.Trim().ToLowerInvariant();
+                query = query.Where(cv => cv.Address != null && EF.Functions.ILike(cv.Address.ToLower(), $"%{location}%"));
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Position))
+            {
+                var position = filter.Position.Trim().ToLowerInvariant();
+                query = query.Where(cv => cv.Position != null && EF.Functions.ILike(cv.Position.ToLower(), $"%{position}%"));
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.WorkType))
+            {
+                var workType = filter.WorkType.Trim().ToLowerInvariant();
+                query = query.Where(cv => cv.WorkType != null && EF.Functions.ILike(cv.WorkType.ToLower(), $"%{workType}%"));
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Skills))
+            {
+                var requiredSkills = filter.Skills
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(s => s.ToLowerInvariant())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .ToArray();
+
+                if (requiredSkills.Length > 0)
+                {
+                    foreach (var skill in requiredSkills)
+                    {
+                        var skillPattern = skill;
+                        query = query.Where(cv =>
+                            cv.CvSkills.Any(s => EF.Functions.ILike(s.Name.ToLower(), $"%{skillPattern}%")));
+                    }
+                }
+            }
+        }
+
+        query = query.OrderByDescending(cv => cv.CreatedAt);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
     }
 
     public async Task AddAsync(CvInfo cvInfo, CancellationToken cancellationToken = default)
