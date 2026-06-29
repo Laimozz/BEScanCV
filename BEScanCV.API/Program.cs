@@ -66,8 +66,14 @@ using (var scope = app.Services.CreateScope())
         dbContext.Database.EnsureCreated(); // InMemory: tạo schema trong RAM
         await DatabaseSeeder.SeedUsersAsync(dbContext);
     }
+    else if (builder.Configuration.GetValue<bool>("Database:UseEnsureCreated"))
+    {
+        dbContext.Database.EnsureCreated();
+    }
     else
+    {
         dbContext.Database.Migrate();
+    }
 }
 
 // Configure the HTTP request pipeline.
@@ -98,7 +104,12 @@ app.UseWebSockets();
 
 // 4. Serve file PDF từ D:\PDFLocal dưới route /files
 //    FE truy cập: http://<BE_IP>:<port>/files/<ten-file>.pdf
-const string localPdfFolder = @"D:\PDFLocal";
+var localPdfFolder = app.Configuration["CvStorage:LocalPdfFolder"];
+if (string.IsNullOrWhiteSpace(localPdfFolder))
+{
+    localPdfFolder = @"D:\PDFLocal";
+}
+
 if (!Directory.Exists(localPdfFolder))
     Directory.CreateDirectory(localPdfFolder);
 

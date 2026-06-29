@@ -41,6 +41,8 @@ public static class DependencyInjection
 
         services.Configure<RedisQueueOptions>(
             configuration.GetSection(RedisQueueOptions.SectionName));
+        services.Configure<CvStorageOptions>(
+            configuration.GetSection(CvStorageOptions.SectionName));
 
         var redisConnectionString = configuration.GetConnectionString("Redis");
         if (string.IsNullOrWhiteSpace(redisConnectionString))
