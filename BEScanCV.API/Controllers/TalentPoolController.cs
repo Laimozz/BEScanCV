@@ -16,7 +16,7 @@ public sealed class TalentPoolController(ITalentPoolService talentPoolService) :
     /// POST /api/v1/cvs/talent-pool
     /// Lấy danh sách CV đã đánh dấu vào Talent Pool (is_marked = true), có phân trang.
     /// </summary>
-    [HttpPost("talent-pool")]
+    [HttpPost("talent-pool")] // Why post instead of get ?
     public async Task<ActionResult<ApiResponse<TalentPoolResponse>>> GetTalentPool(
         [FromBody] TalentPoolRequest request,
         CancellationToken cancellationToken)

@@ -82,7 +82,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         return Ok(new ApiResponse<CvBatchUploadStatusResponse>(response));
     }
 
-    [HttpPost("bulk-upload/{batchId}/cancel")]
+    [HttpPost("bulk-upload/{batchId}/cancel")] // Should be Patch/Put instead. No new resource is being created
     public async Task<ActionResult<ApiResponse<CvBatchCancelResponse>>> CancelBatch(
         string batchId,
         CancellationToken cancellationToken)

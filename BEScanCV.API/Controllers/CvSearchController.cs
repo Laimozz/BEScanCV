@@ -43,14 +43,15 @@ public sealed class CvSearchController(ICvSearchService cvSearchService) : Contr
     //     }
     // }
 
-    [HttpGet("get-favor")]
-    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<CvFavoriteResponse>>>> GetFavorites(
-        CancellationToken cancellationToken)
-    {
-        var response = await cvSearchService.GetFavoritesAsync(cancellationToken);
+    // [HttpGet("get-favor")]  //    [HttpGet("favourites")], in api endpoint, dont use verb
 
-        return Ok(new ApiResponse<IReadOnlyCollection<CvFavoriteResponse>>(response));
-    }
+    // public async Task<ActionResult<ApiResponse<IReadOnlyCollection<CvFavoriteResponse>>>> GetFavorites(
+    //     CancellationToken cancellationToken)
+    // {
+    //     var response = await cvSearchService.GetFavoritesAsync(cancellationToken);
+
+    //     return Ok(new ApiResponse<IReadOnlyCollection<CvFavoriteResponse>>(response));
+    // }
 
     [HttpPost("search")]
     [AllowAnonymous]

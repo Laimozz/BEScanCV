@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BEScanCV.API.Controllers;
 
 [ApiController]
-[Route("api/v1/cvs/getAll")]
+[Route("api/v1/cvs/getAll")] // Why post instead of get ?
 [Authorize]
 public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : ControllerBase
 {
