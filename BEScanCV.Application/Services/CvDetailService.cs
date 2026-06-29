@@ -1,4 +1,4 @@
-using BEScanCV.Application.DTOS;
+using BEScanCV.Application.DTOS.Response;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using Microsoft.Extensions.Configuration;

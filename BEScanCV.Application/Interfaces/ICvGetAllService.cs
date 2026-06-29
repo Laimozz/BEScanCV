@@ -1,4 +1,5 @@
-using BEScanCV.Application.DTOS;
+using BEScanCV.Application.DTOS.Requests;
+using BEScanCV.Application.DTOS.Response;
 
 namespace BEScanCV.Application.Interfaces;
 

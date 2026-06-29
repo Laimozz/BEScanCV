@@ -1,7 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using BEScanCV.Application.DTOS;
+using BEScanCV.Application.DTOS.Requests;
+using BEScanCV.Application.DTOS.Response;
 using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Infrastructure.Options;
