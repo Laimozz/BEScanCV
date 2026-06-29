@@ -9,7 +9,7 @@ namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs/getAll")]
-//[Authorize]
+[Authorize]
 public sealed class CvGetAllController(ICvGetAllService cvGetAllService) : ControllerBase
 {
     [HttpPost]
