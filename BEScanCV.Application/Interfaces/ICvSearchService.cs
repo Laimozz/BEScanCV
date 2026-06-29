@@ -10,8 +10,8 @@ public interface ICvSearchService
         string requestBaseUrl,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<CvFavoriteResponse>> GetFavoritesAsync(
-        CancellationToken cancellationToken = default);
+    // Task<IReadOnlyCollection<CvFavoriteResponse>> GetFavoritesAsync(
+    //     CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<CvSearchSemanticResponse>> SemanticSearchAsync(
         CvSemanticSearchRequest request,

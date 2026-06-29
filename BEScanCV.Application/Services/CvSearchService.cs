@@ -64,16 +64,16 @@ public sealed class CvSearchService(
         return CreatePagedResponse(page, limit, rankedResults);
     }
 
-    public async Task<IReadOnlyCollection<CvFavoriteResponse>> GetFavoritesAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var (favorites, _) = await cvInfoRepository.GetFavoritesAsync(1, int.MaxValue, cancellationToken);
-        var baseUrl = configuration["PublicBaseUrl"];
+    // public async Task<IReadOnlyCollection<CvFavoriteResponse>> GetFavoritesAsync(
+    //     CancellationToken cancellationToken = default)
+    // {
+    //     var (favorites, _) = await cvInfoRepository.GetFavoritesAsync(1, int.MaxValue, cancellationToken);
+    //     var baseUrl = configuration["PublicBaseUrl"];
 
-        return favorites
-            .Select(cv => CvDataResponseMapper.Map<CvFavoriteResponse>(cv, baseUrl))
-            .ToArray();
-    }
+    //     return favorites
+    //         .Select(cv => CvDataResponseMapper.Map<CvFavoriteResponse>(cv, baseUrl))
+    //         .ToArray();
+    // }
 
     public async Task<IReadOnlyCollection<CvSearchSemanticResponse>> SemanticSearchAsync(
         CvSemanticSearchRequest request,
