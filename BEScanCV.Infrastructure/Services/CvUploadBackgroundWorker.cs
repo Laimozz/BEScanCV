@@ -1,3 +1,4 @@
+using BEScanCV.Application.DTOS.Response;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
@@ -421,7 +422,7 @@ public sealed class CvUploadBackgroundWorker(
         }, cancellationToken);
     }
 
-    private static async Task<Application.DTOS.CvBatchUploadStatusResponse?> NotifyBatchProgressAsync(
+    private static async Task<CvBatchUploadStatusResponse?> NotifyBatchProgressAsync(
         ICvUploadBatchRepository batchRepository,
         IUploadProgressNotifier notifier,
         string batchId,

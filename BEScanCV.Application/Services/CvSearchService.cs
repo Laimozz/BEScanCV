@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
 using BEScanCV.Application.DTOS;
+using BEScanCV.Application.DTOS.Requests;
+using BEScanCV.Application.DTOS.Response;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;

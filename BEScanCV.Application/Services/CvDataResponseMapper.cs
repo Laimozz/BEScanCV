@@ -1,4 +1,5 @@
 using BEScanCV.Application.DTOS;
+using BEScanCV.Application.DTOS.Response;
 using BEScanCV.Domain.Entities;
 
 namespace BEScanCV.Application.Services;
