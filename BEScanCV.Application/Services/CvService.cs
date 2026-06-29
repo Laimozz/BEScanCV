@@ -700,10 +700,10 @@ public sealed class CvService(
             throw new CvUploadValidationException($"{fileName} must be a PDF, DOCX, or DOC file.");
         }
 
-        if (extension == ".pdf" && !IsPdf(content))
-        {
-            throw new CvUploadValidationException($"{fileName} is not a valid PDF file.");
-        }
+        // if (extension == ".pdf" && !IsPdf(content))
+        // {
+        //     throw new CvUploadValidationException($"{fileName} is not a valid PDF file.");
+        // }
 
         if (extension == ".docx" && !IsDocx(content))
         {
