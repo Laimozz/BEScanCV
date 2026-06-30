@@ -64,7 +64,6 @@ using (var scope = app.Services.CreateScope())
     if (useInMemory)
     {
         dbContext.Database.EnsureCreated(); // InMemory: tạo schema trong RAM
-        await DatabaseSeeder.SeedUsersAsync(dbContext);
     }
     else if (builder.Configuration.GetValue<bool>("Database:UseEnsureCreated"))
     {

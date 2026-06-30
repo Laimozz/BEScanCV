@@ -54,7 +54,6 @@ public sealed class CvSearchController(ICvSearchService cvSearchService) : Contr
     // }
 
     [HttpPost("search")]
-    [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<IReadOnlyCollection<CvSearchSemanticResponse>>>> SemanticSearch(
         [FromBody] CvSemanticSearchRequest request,
         CancellationToken cancellationToken)
