@@ -23,6 +23,7 @@ public sealed class CvGetAllController(ICvGetAllService cvGetAllService, ILogger
             var response = await cvGetAllService.CvGetAllAsync(
                 request,
                 cancellationToken);
+            logger.LogInformation("Retrieved all CVs successfully. Count: {CvCount} at {Timestamp}", response.Meta.Total, DateTime.UtcNow);
             return Ok(new ApiResponse<CvGetAllResponse>(response));
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
