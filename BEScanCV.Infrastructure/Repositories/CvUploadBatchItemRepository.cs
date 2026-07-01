@@ -2,10 +2,11 @@ using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
 using BEScanCV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Infrastructure.Repositories;
 
-public sealed class CvUploadBatchItemRepository(BEScanCvDbContext dbContext)
+public sealed class CvUploadBatchItemRepository(BEScanCvDbContext dbContext, ILogger<CvUploadBatchItemRepository> logger)
     : ICvUploadBatchItemRepository
 {
     public Task<CvUploadBatchItem?> GetByIdAsync(
@@ -46,5 +47,7 @@ public sealed class CvUploadBatchItemRepository(BEScanCvDbContext dbContext)
         await dbContext.CvUploadBatchItems.AddAsync(item, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        logger.LogInformation("Added queued batch item. BatchId: {BatchId}, FileName: {FileName} at {Timestamp}", item.CvUploadBatchId, item.FileName, DateTime.UtcNow);
     }
 }

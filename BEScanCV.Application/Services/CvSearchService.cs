@@ -7,6 +7,7 @@ using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Application.Services;
 
@@ -14,7 +15,8 @@ public sealed class CvSearchService(
     ICvInfoRepository cvInfoRepository,
     ISearchQueryParser searchQueryParser,
     ISemanticSearchClient semanticSearchClient,
-    IConfiguration configuration) : ICvSearchService
+    IConfiguration configuration,
+    ILogger<CvSearchService> logger) : ICvSearchService
 {
     private const int PageSize = 10;
 
@@ -24,16 +26,18 @@ public sealed class CvSearchService(
         CancellationToken cancellationToken = default)
     {
         var page = NormalizePage(request.Page);
-        var limit = request.Limit > 0 ? request.Limit : 10; // Default limit fallback
+        var limit = request.Limit > 0 ? request.Limit : 10;
 
         if (string.IsNullOrWhiteSpace(request.Query))
         {
+            logger.LogInformation("Search query is empty. Returning empty result at {Timestamp}", DateTime.UtcNow);
             return CreatePagedResponse(page, limit, []);
         }
 
         var criteria = await searchQueryParser.ParseAsync(request.Query, cancellationToken);
         if (criteria.Fields.Count == 0)
         {
+            logger.LogInformation("No search criteria parsed from query: {Query} at {Timestamp}", request.Query, DateTime.UtcNow);
             return CreatePagedResponse(page, limit, []);
         }
 
@@ -60,6 +64,8 @@ public sealed class CvSearchService(
             .ThenBy(candidate => candidate.Result.FullName)
             .Select(candidate => candidate.Result)
             .ToArray();
+
+        logger.LogInformation("Search completed. Query: {Query}, Results: {ResultCount} at {Timestamp}", request.Query, rankedResults.Length, DateTime.UtcNow);
 
         return CreatePagedResponse(page, limit, rankedResults);
     }
@@ -91,6 +97,7 @@ public sealed class CvSearchService(
 
         if (cvIds.Length == 0)
         {
+            logger.LogInformation("Semantic search returned no AI results at {Timestamp}", DateTime.UtcNow);
             return [];
         }
 
@@ -123,7 +130,7 @@ public sealed class CvSearchService(
         }
 
         var baseUrl = configuration["PublicBaseUrl"];
-        return uniqueAiResults
+        var responses = uniqueAiResults
             .Select(result =>
             {
                 var cv = cvByAiDocumentId[result.CvId.Trim()];
@@ -135,6 +142,10 @@ public sealed class CvSearchService(
                 return response;
             })
             .ToArray();
+
+        logger.LogInformation("Semantic search completed. Results: {ResultCount} at {Timestamp}", responses.Length, DateTime.UtcNow);
+
+        return responses;
     }
 
     private static CvSearchResponse CreatePagedResponse(int page, int limit, IReadOnlyCollection<CvSearchResultDto> rankedResults)

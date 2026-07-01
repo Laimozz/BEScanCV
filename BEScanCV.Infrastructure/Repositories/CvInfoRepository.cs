@@ -3,10 +3,11 @@ using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
 using BEScanCV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Infrastructure.Repositories;
 
-public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepository
+public sealed class CvInfoRepository(BEScanCvDbContext dbContext, ILogger<CvInfoRepository> logger) : ICvInfoRepository
 {
     public Task<CvInfo?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -194,6 +195,7 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
         NormalizeDateTimes(cvInfo);
         await dbContext.CvInfos.AddAsync(cvInfo, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Added CV. CvInfoId: {CvInfoId} at {Timestamp}", cvInfo.Id, DateTime.UtcNow);
     }
 
     public async Task UpdateAsync(CvInfo cvInfo, CancellationToken cancellationToken = default)
@@ -201,6 +203,7 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
         NormalizeDateTimes(cvInfo);
         dbContext.Entry(cvInfo).State = EntityState.Modified;
         await dbContext.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Updated CV. CvInfoId: {CvInfoId} at {Timestamp}", cvInfo.Id, DateTime.UtcNow);
     }
 
     public async Task UpdateEditableDataAsync(
@@ -243,6 +246,7 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        logger.LogInformation("Updated editable data for CV. CvInfoId: {CvInfoId} at {Timestamp}", cvInfo.Id, DateTime.UtcNow);
     }
 
     public async Task UpsertExtractedDataAsync(
@@ -300,6 +304,7 @@ public sealed class CvInfoRepository(BEScanCvDbContext dbContext) : ICvInfoRepos
         await dbContext.CvWorkExperiences.AddRangeAsync(workExperiences, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        logger.LogInformation("Upserted extracted data for CV. CvInfoId: {CvInfoId}, Skills: {SkillCount}, Certifications: {CertCount}, Experiences: {ExpCount} at {Timestamp}", cvInfo.Id, cvSkills.Count(), cvCertifications.Count(), workExperiences.Count, DateTime.UtcNow);
     }
 
     private static void NormalizeDateTimes(CvInfo cvInfo)

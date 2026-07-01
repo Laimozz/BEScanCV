@@ -8,6 +8,7 @@ using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Application.Services;
 
@@ -19,7 +20,8 @@ public sealed class CvService(
     ICvUploadBatchRepository cvUploadBatchRepository,
     ICvUploadBatchItemRepository cvUploadBatchItemRepository,
     ICvUploadJobQueue cvUploadJobQueue,
-    IUploadProgressNotifier uploadProgressNotifier) : ICvService
+    IUploadProgressNotifier uploadProgressNotifier,
+    ILogger<CvService> logger) : ICvService
 {
     private static readonly string[] AllowedExtensions = [".pdf", ".docx", ".doc"];
     private const int MaxFilesPerRequest = 5;
@@ -30,6 +32,7 @@ public sealed class CvService(
         CvBulkUploadRequest request,
         CancellationToken cancellationToken = default)
     {
+        logger.LogInformation("Starting bulk upload. RequestId: {RequestId}, FileCount: {FileCount} at {Timestamp}", request.RequestId, request.Files.Count, DateTime.UtcNow);
         ValidateRequest(request);
 
         var existingBatch = await cvUploadBatchRepository.GetByRequestIdAsync(
@@ -38,6 +41,7 @@ public sealed class CvService(
 
         if (existingBatch is not null)
         {
+            logger.LogInformation("Existing batch found. BatchId: {BatchId}, RequestId: {RequestId} at {Timestamp}", existingBatch.Id, request.RequestId, DateTime.UtcNow);
             return new CvBulkUploadResponse
             {
                 BatchId = existingBatch.Id,
@@ -119,12 +123,16 @@ public sealed class CvService(
             }, cancellationToken);
 
             acceptedFiles++;
+
+            logger.LogInformation("File queued. FileName: {FileName}, FileSize: {FileSize}, CvFileId: {CvFileId} at {Timestamp}", file.OriginalFileName, file.Content.LongLength, cvFile.Id, DateTime.UtcNow);
         }
 
         await NotifyBatchProgressAsync(batch.Id, cancellationToken);
         var batchStatus = await cvUploadBatchRepository.GetStatusAsync(
             batch.Id,
             cancellationToken);
+
+        logger.LogInformation("Bulk upload completed. BatchId: {BatchId}, AcceptedFiles: {AcceptedFiles}, TotalAcceptedFiles: {TotalAcceptedFiles} at {Timestamp}", batch.Id, acceptedFiles, batchStatus?.TotalFiles ?? acceptedFiles, DateTime.UtcNow);
 
         return new CvBulkUploadResponse
         {
@@ -135,16 +143,19 @@ public sealed class CvService(
         };
     }
 
-    public Task<CvBatchUploadStatusResponse?> GetBatchStatusAsync(
+    public async Task<CvBatchUploadStatusResponse?> GetBatchStatusAsync(
         string batchId,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(batchId))
         {
+            logger.LogWarning("GetBatchStatus called with empty batchId at {Timestamp}", DateTime.UtcNow);
             throw new CvUploadValidationException("batchId is required.");
         }
 
-        return cvUploadBatchRepository.GetStatusAsync(batchId.Trim(), cancellationToken);
+        var result = await cvUploadBatchRepository.GetStatusAsync(batchId.Trim(), cancellationToken);
+        logger.LogInformation("Retrieved batch status. BatchId: {BatchId} at {Timestamp}", batchId, DateTime.UtcNow);
+        return result;
     }
 
     public async Task<CvBatchCancelResponse> CancelBatchAsync(
@@ -153,6 +164,7 @@ public sealed class CvService(
     {
         if (string.IsNullOrWhiteSpace(batchId))
         {
+            logger.LogWarning("CancelBatch called with empty batchId at {Timestamp}", DateTime.UtcNow);
             throw new CvUploadValidationException("batchId is required.");
         }
 
@@ -161,8 +173,11 @@ public sealed class CvService(
             cancellationToken: cancellationToken);
         if (batch is null)
         {
+            logger.LogWarning("Batch not found for cancellation. BatchId: {BatchId} at {Timestamp}", batchId, DateTime.UtcNow);
             throw new CvUploadValidationException("Batch not found.", 404);
         }
+
+        logger.LogInformation("Cancelling batch. BatchId: {BatchId}, Status: {Status} at {Timestamp}", batchId, batch.Status, DateTime.UtcNow);
 
         if (batch.Status is "COMPLETED" or "CANCELLED")
         {
@@ -214,6 +229,7 @@ public sealed class CvService(
     {
         if (cvInfoId <= 0)
         {
+            logger.LogWarning("UpdateAsync called with invalid cvInfoId: {CvInfoId} at {Timestamp}", cvInfoId, DateTime.UtcNow);
             throw new CvUploadValidationException("cvInfoId is invalid.");
         }
 
@@ -224,6 +240,7 @@ public sealed class CvService(
             cancellationToken);
         if (cvInfo is null)
         {
+            logger.LogWarning("CV not found for update. CvInfoId: {CvInfoId} at {Timestamp}", cvInfoId, DateTime.UtcNow);
             throw new CvUploadValidationException("CV not found.", 404);
         }
 
@@ -302,6 +319,8 @@ public sealed class CvService(
             certifications,
             cancellationToken);
 
+        logger.LogInformation("CV updated successfully. CvInfoId: {CvInfoId} at {Timestamp}", cvInfoId, DateTime.UtcNow);
+
         return new CvUpdateResponse
         {
             CvInfoId = cvInfo.Id,
@@ -337,6 +356,7 @@ public sealed class CvService(
     {
         if (cvInfoId <= 0)
         {
+            logger.LogWarning("DeleteAsync called with invalid cvInfoId: {CvInfoId} at {Timestamp}", cvInfoId, DateTime.UtcNow);
             throw new CvUploadValidationException("cvInfoId is invalid.");
         }
 
@@ -345,6 +365,7 @@ public sealed class CvService(
             cancellationToken);
         if (cvInfo?.CvFile is null)
         {
+            logger.LogWarning("CV not found for deletion. CvInfoId: {CvInfoId} at {Timestamp}", cvInfoId, DateTime.UtcNow);
             throw new CvUploadValidationException("CV not found.", 404);
         }
 
@@ -352,6 +373,8 @@ public sealed class CvService(
             cvInfo.CvFile.Id,
             cvInfo.CvFile.FileUrl,
             cancellationToken);
+
+        logger.LogInformation("CV deleted successfully. CvInfoId: {CvInfoId}, CvFileId: {CvFileId} at {Timestamp}", cvInfoId, cvInfo.CvFile.Id, DateTime.UtcNow);
     }
 
     public async Task UpdateQualityScoreAsync(
@@ -390,6 +413,7 @@ public sealed class CvService(
             cancellationToken);
         if (cvInfo is null)
         {
+            logger.LogWarning("CV not found for quality score update. CvId: {CvId} at {Timestamp}", cvId, DateTime.UtcNow);
             throw new CvUploadValidationException(
                 "CV with the provided cv_id was not found.",
                 404);
@@ -404,6 +428,8 @@ public sealed class CvService(
         cvInfo.UpdatedAt = DateTime.UtcNow;
 
         await cvInfoRepository.UpdateAsync(cvInfo, cancellationToken);
+
+        logger.LogInformation("CV quality score updated. CvId: {CvId}, Score: {Score} at {Timestamp}", cvId, request.QualityScore.Value, DateTime.UtcNow);
     }
 
     public async Task<IReadOnlyCollection<CvQualityScoreResultResponse>> GetQualityScoresAsync(
@@ -445,7 +471,7 @@ public sealed class CvService(
                 group => group.First(),
                 StringComparer.Ordinal);
 
-        return cvIds
+        var result = cvIds
             .Where(cvInfoByAiDocumentId.ContainsKey)
             .Select(cvId =>
             {
@@ -458,6 +484,10 @@ public sealed class CvService(
                 };
             })
             .ToArray();
+
+        logger.LogInformation("Retrieved quality scores for {CvCount} CVs at {Timestamp}", result.Length, DateTime.UtcNow);
+
+        return result;
     }
 
     private async Task<CvUploadBatch> EnsureBatchAsync(

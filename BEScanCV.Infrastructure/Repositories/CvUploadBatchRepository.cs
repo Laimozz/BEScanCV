@@ -3,10 +3,11 @@ using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
 using BEScanCV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Infrastructure.Repositories;
 
-public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUploadBatchRepository
+public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext, ILogger<CvUploadBatchRepository> logger) : ICvUploadBatchRepository
 {
     public Task<CvUploadBatch?> GetByIdAsync(
         string batchId,
@@ -33,6 +34,7 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
         NormalizeDateTimes(batch);
         await dbContext.CvUploadBatches.AddAsync(batch, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Added batch. BatchId: {BatchId} at {Timestamp}", batch.Id, DateTime.UtcNow);
     }
 
     public async Task UpdateBatchAsync(CvUploadBatch batch, CancellationToken cancellationToken = default)
@@ -40,6 +42,7 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
         NormalizeDateTimes(batch);
         dbContext.CvUploadBatches.Update(batch);
         await dbContext.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Updated batch. BatchId: {BatchId}, Status: {Status} at {Timestamp}", batch.Id, batch.Status, DateTime.UtcNow);
     }
 
     public async Task<bool> TryStartFileAsync(
@@ -87,6 +90,7 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
         }
 
         await transaction.CommitAsync(cancellationToken);
+        logger.LogInformation("Started file processing. BatchId: {BatchId}, BatchUploadItemId: {BatchUploadItemId} at {Timestamp}", batchId, batchUploadItemId, DateTime.UtcNow);
         return true;
     }
 
@@ -131,6 +135,7 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
         }
 
         await transaction.CommitAsync(cancellationToken);
+        logger.LogInformation("Marked file completed. BatchId: {BatchId}, BatchUploadItemId: {BatchUploadItemId} at {Timestamp}", batchId, batchUploadItemId, DateTime.UtcNow);
     }
 
     public async Task<CvBatchUploadStatusResponse?> RequestCancellationAsync(
@@ -152,6 +157,11 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
                 .SetProperty(batch => batch.PendingFiles, 0)
                 .SetProperty(batch => batch.UpdatedAt, DateTime.UtcNow),
                 cancellationToken);
+
+        if (updatedRows > 0)
+        {
+            logger.LogInformation("Requested batch cancellation. BatchId: {BatchId}, UpdatedRows: {UpdatedRows} at {Timestamp}", batchId, updatedRows, DateTime.UtcNow);
+        }
 
         return updatedRows == 0
             ? null
@@ -175,6 +185,11 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
                     batch => batch.Status == "CANCELLING" ? "CANCELLED" : "COMPLETED")
                 .SetProperty(batch => batch.UpdatedAt, DateTime.UtcNow),
                 cancellationToken);
+
+        if (updatedRows > 0)
+        {
+            logger.LogInformation("Completed idle batch. BatchId: {BatchId} at {Timestamp}", batchId, DateTime.UtcNow);
+        }
 
         return updatedRows == 0
             ? null
@@ -212,6 +227,7 @@ public sealed class CvUploadBatchRepository(BEScanCvDbContext dbContext) : ICvUp
 
         var response = BuildStatus(batch);
         response.Items = items;
+        logger.LogInformation("Retrieved batch status. BatchId: {BatchId}, Status: {Status} at {Timestamp}", batchId, response.Status, DateTime.UtcNow);
         return response;
     }
 

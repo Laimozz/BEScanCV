@@ -1,19 +1,17 @@
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Infrastructure.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace BEScanCV.Infrastructure.Services;
 
-public sealed class LocalCvFileStorageService : ICvFileStorageService
+public sealed class LocalCvFileStorageService(
+    IOptions<CvStorageOptions> options,
+    ILogger<LocalCvFileStorageService> logger) : ICvFileStorageService
 {
-    private readonly string _localPdfFolder;
-
-    public LocalCvFileStorageService(IOptions<CvStorageOptions> options)
-    {
-        _localPdfFolder = string.IsNullOrWhiteSpace(options.Value.LocalPdfFolder)
-            ? @"D:\PDFLocal"
-            : options.Value.LocalPdfFolder;
-    }
+    private readonly string _localPdfFolder = string.IsNullOrWhiteSpace(options.Value.LocalPdfFolder)
+        ? @"D:\PDFLocal"
+        : options.Value.LocalPdfFolder;
 
     public async Task<string> SaveAsync(
         string originalFileName,
@@ -36,6 +34,8 @@ public sealed class LocalCvFileStorageService : ICvFileStorageService
 
         await File.WriteAllBytesAsync(filePath, content, cancellationToken);
 
+        logger.LogInformation("Saved CV file. FileName: {OriginalFileName}, FilePath: {FilePath}, Size: {Size} at {Timestamp}", originalFileName, filePath, content.Length, DateTime.UtcNow);
+
         return filePath;
     }
 
@@ -56,12 +56,18 @@ public sealed class LocalCvFileStorageService : ICvFileStorageService
 
         if (!fullPath.StartsWith(storageRoot, StringComparison.OrdinalIgnoreCase))
         {
+            logger.LogWarning("CV file outside storage root. FilePath: {FilePath} at {Timestamp}", filePath, DateTime.UtcNow);
             throw new InvalidOperationException("The file is outside the configured CV storage folder.");
         }
 
         if (File.Exists(fullPath))
         {
             File.Delete(fullPath);
+            logger.LogInformation("Deleted CV file. FilePath: {FilePath} at {Timestamp}", filePath, DateTime.UtcNow);
+        }
+        else
+        {
+            logger.LogWarning("CV file not found for deletion. FilePath: {FilePath} at {Timestamp}", filePath, DateTime.UtcNow);
         }
 
         return Task.CompletedTask;

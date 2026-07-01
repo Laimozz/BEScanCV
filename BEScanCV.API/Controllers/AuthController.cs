@@ -1,4 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
 using BEScanCV.API.Common;
 using BEScanCV.Application.DTOS;
 using BEScanCV.Application.DTOS.Requests;
@@ -7,7 +6,6 @@ using BEScanCV.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using Org.BouncyCastle.Asn1;
 
 namespace BEScanCV.API.Controllers;
 
@@ -41,15 +39,20 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         {
             var refreshToken = Request.Cookies["refreshToken"];
             if (string.IsNullOrEmpty(refreshToken))
+            {
+                logger.LogWarning("Refresh token is invalid or expired at {Timestamp}", DateTime.UtcNow);
                 return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Refresh token is invalid or expired", StatusCode = 401 });
+            }
 
             var tokens = await jwtService.RefreshTokenAsync(refreshToken, ct);
             SetRefreshTokenCookie(tokens.RefreshToken!, tokens.RefreshTokenExpiresAt!.Value);
+            logger.LogInformation("Token refreshed successfully for user {UserId} at {Timestamp}", tokens.User.Id, DateTime.UtcNow);
             return Ok(new ApiResponse<RefreshResponse>(new RefreshResponse(tokens.AccessToken, tokens.AccessTokenExpiresAt)) { Message = "Token refreshed successfully", StatusCode = 200 });
         }
         catch (SecurityTokenException)
         {
             ClearRefreshTokenCookie();
+            logger.LogWarning("Failed to refresh token at {Timestamp}", DateTime.UtcNow);
             return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Refresh token is invalid or expired", StatusCode = 401 });
         }
     }
@@ -61,8 +64,12 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
     {
         var refreshToken = Request.Cookies["refreshToken"];
         if (!string.IsNullOrEmpty(refreshToken))
+        {
+            logger.LogInformation("Revoking refresh token for user at {Timestamp}", DateTime.UtcNow);
             await jwtService.RevokeRefreshTokenAsync(refreshToken, ct);
+        }
         ClearRefreshTokenCookie();
+        logger.LogInformation("User logged out successfully at {Timestamp}", DateTime.UtcNow);
         return Ok(new ApiResponse<object>(null) { Message = "Logged out successfully", StatusCode = 200 });
     }
 
@@ -76,9 +83,13 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
             if (!long.TryParse(userIdClaim, out var userId))
+            {
+                logger.LogWarning("Invalid user ID in token at {Timestamp}", DateTime.UtcNow);
                 return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid token claims", StatusCode = 401 });
+            }
 
             await userService.ChangePasswordAsync(userId, request, cancellationToken);
+            logger.LogInformation("Password changed successfully for user {UserId} at {Timestamp}", userId, DateTime.UtcNow);
             return Ok(new ApiResponse<object>(null)
             {
                 Message = "Password changed successfully"
@@ -86,6 +97,7 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         }
         catch (KeyNotFoundException)
         {
+            logger.LogWarning("User not found for password change at {Timestamp}", DateTime.UtcNow);
             return NotFound(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -95,6 +107,7 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning("Password change failed for user at {Timestamp}: {Message}", DateTime.UtcNow, ex.Message);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -104,6 +117,7 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
         }
         catch (ArgumentException ex)
         {
+            logger.LogWarning("Password change failed for user at {Timestamp}: {Message}", DateTime.UtcNow, ex.Message);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -123,13 +137,17 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             
             if (!long.TryParse(userIdClaim, out var userId))
-                return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid token claims", StatusCode = 401 });
-
+                {
+                    logger.LogWarning("Invalid user ID in token at {Timestamp}", DateTime.UtcNow);
+                    return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid token claims", StatusCode = 401 });
+                }   
             var user = await userService.GetCurrentUserAsync(userId, cancellationToken);
+            logger.LogInformation("Retrieved current user {UserId} at {Timestamp}", userId, DateTime.UtcNow);
             return Ok(new ApiResponse<UserDto>(user));
         }
         catch (KeyNotFoundException)
         {
+            logger.LogWarning("User not found for current user retrieval at {Timestamp}", DateTime.UtcNow);
             return NotFound(new ApiResponse<object>(null) { Success = false, Message = "User not found", StatusCode = 404 });
         }
     }
@@ -146,23 +164,30 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
             if (!long.TryParse(userIdClaim, out var userId))
-                return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid token claims", StatusCode = 401 });
+                {
+                    logger.LogWarning("Invalid user ID in token at {Timestamp}", DateTime.UtcNow);
+                    return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid token claims", StatusCode = 401 });
+                }
 
             var user = await userService.UpdateProfileAsync(userId, request.FullName, cancellationToken);
+            logger.LogInformation("Profile updated successfully for user {UserId} at {Timestamp}", userId, DateTime.UtcNow);
             return Ok(new ApiResponse<UserDto>(user) { Message = "Profile updated successfully", StatusCode = 200 });
         }
         catch (KeyNotFoundException)
         {
+            logger.LogWarning("User not found for profile update at {Timestamp}", DateTime.UtcNow);
             return NotFound(new ApiResponse<object>(null) { Success = false, Message = "User not found", StatusCode = 404 });
         }
         catch (ArgumentException ex)
         {
+            logger.LogWarning("Profile update failed for user at {Timestamp}: {Message}", DateTime.UtcNow, ex.Message);
             return BadRequest(new ApiResponse<object>(null) { Success = false, Message = ex.Message, StatusCode = 400 });
         }
     }
 
     private void SetRefreshTokenCookie(string token, DateTime expiresAt)
     {
+        logger.LogInformation("Setting refresh token cookie for user at {Timestamp}", DateTime.UtcNow);
         Response.Cookies.Append("refreshToken", token, new CookieOptions
         {
             HttpOnly = true,
@@ -175,6 +200,7 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
 
     private void ClearRefreshTokenCookie()
     {
+        logger.LogInformation("Clearing refresh token cookie for user at {Timestamp}", DateTime.UtcNow);
         Response.Cookies.Append("refreshToken", string.Empty, new CookieOptions
         {
             HttpOnly = true,

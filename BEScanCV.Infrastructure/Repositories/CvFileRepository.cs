@@ -2,10 +2,11 @@ using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
 using BEScanCV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Infrastructure.Repositories;
 
-public sealed class CvFileRepository(BEScanCvDbContext dbContext) : ICvFileRepository
+public sealed class CvFileRepository(BEScanCvDbContext dbContext, ILogger<CvFileRepository> logger) : ICvFileRepository
 {
     public Task<CvFile?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -29,6 +30,7 @@ public sealed class CvFileRepository(BEScanCvDbContext dbContext) : ICvFileRepos
         NormalizeDateTimes(cvFile);
         await dbContext.CvFiles.AddAsync(cvFile, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Added CV file. CvFileId: {CvFileId} at {Timestamp}", cvFile.Id, DateTime.UtcNow);
     }
 
     public async Task UpdateAsync(CvFile cvFile, CancellationToken cancellationToken = default)
@@ -36,6 +38,7 @@ public sealed class CvFileRepository(BEScanCvDbContext dbContext) : ICvFileRepos
         NormalizeDateTimes(cvFile);
         dbContext.CvFiles.Update(cvFile);
         await dbContext.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Updated CV file. CvFileId: {CvFileId} at {Timestamp}", cvFile.Id, DateTime.UtcNow);
     }
 
     private static void NormalizeDateTimes(CvFile cvFile)

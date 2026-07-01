@@ -5,12 +5,13 @@ using BEScanCV.Application.DTOS.Response;
 using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs")]
-public sealed class CvController(ICvService cvService) : ControllerBase
+public sealed class CvController(ICvService cvService, ILogger<CvController> logger) : ControllerBase
 {
     [HttpPost("bulk-upload")]
     [Consumes("multipart/form-data")]
@@ -32,10 +33,14 @@ public sealed class CvController(ICvService cvService) : ControllerBase
             batchId,
             GetCurrentUserId());
 
+        logger.LogInformation("Received bulk upload request with {FileCount} files at {Timestamp}", files?.Count ?? 0, DateTime.UtcNow);
+
         try
         {
             var response = await cvService.BulkUploadAsync(request, cancellationToken);
             response.WebsocketEndpoint = BuildWebSocketEndpoint(response.WebsocketEndpoint);
+
+            logger.LogInformation("Bulk upload accepted. BatchId: {BatchId}, AcceptedFiles: {AcceptedFiles} at {Timestamp}", response.BatchId, response.AcceptedFiles, DateTime.UtcNow);
 
             return Accepted(new ApiResponse<CvBulkUploadResponse>(response)
             {
@@ -45,6 +50,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
         catch (CvUploadValidationException ex)
         {
+            logger.LogWarning("Bulk upload validation failed at {Timestamp}: {Message}", DateTime.UtcNow, ex.Message);
             return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
             {
                 Message = ex.Message,
@@ -52,8 +58,9 @@ public sealed class CvController(ICvService cvService) : ControllerBase
                 StatusCode = ex.StatusCode
             });
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Upload CV failed at {Timestamp}", DateTime.UtcNow);
             return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>(null)
             {
                 Message = "Upload CV failed.",
@@ -71,6 +78,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         var response = await cvService.GetBatchStatusAsync(batchId, cancellationToken);
         if (response is null)
         {
+            logger.LogWarning("Batch not found. BatchId: {BatchId} at {Timestamp}", batchId, DateTime.UtcNow);
             return NotFound(new ApiResponse<CvBatchUploadStatusResponse>(null)
             {
                 Message = "Batch not found.",
@@ -79,10 +87,12 @@ public sealed class CvController(ICvService cvService) : ControllerBase
             });
         }
 
+        logger.LogInformation("Retrieved batch status. BatchId: {BatchId}, Status: {Status} at {Timestamp}", batchId, response.Status, DateTime.UtcNow);
+
         return Ok(new ApiResponse<CvBatchUploadStatusResponse>(response));
     }
 
-    [HttpPost("bulk-upload/{batchId}/cancel")] // Should be Patch/Put instead. No new resource is being created
+    [HttpPost("bulk-upload/{batchId}/cancel")]
     public async Task<ActionResult<ApiResponse<CvBatchCancelResponse>>> CancelBatch(
         string batchId,
         CancellationToken cancellationToken)
@@ -90,6 +100,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         try
         {
             var response = await cvService.CancelBatchAsync(batchId, cancellationToken);
+            logger.LogInformation("Batch cancellation requested. BatchId: {BatchId}, Status: {Status} at {Timestamp}", batchId, response.Status, DateTime.UtcNow);
             return Ok(new ApiResponse<CvBatchCancelResponse>(response)
             {
                 Message = "Batch cancellation requested."
@@ -97,6 +108,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
         catch (CvUploadValidationException ex)
         {
+            logger.LogWarning("Batch cancellation validation failed. BatchId: {BatchId} at {Timestamp}: {Message}", batchId, DateTime.UtcNow, ex.Message);
             return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
             {
                 Message = ex.Message,
@@ -119,6 +131,8 @@ public sealed class CvController(ICvService cvService) : ControllerBase
                 request,
                 cancellationToken);
 
+            logger.LogInformation("CV updated successfully. CvInfoId: {CvInfoId} at {Timestamp}", cvInfoId, DateTime.UtcNow);
+
             return Ok(new ApiResponse<CvUpdateResponse>(response)
             {
                 Message = "CV updated successfully."
@@ -126,6 +140,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
         catch (CvUploadValidationException ex)
         {
+            logger.LogWarning("CV update validation failed. CvInfoId: {CvInfoId} at {Timestamp}: {Message}", cvInfoId, DateTime.UtcNow, ex.Message);
             return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
             {
                 Message = ex.Message,
@@ -144,6 +159,8 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         {
             await cvService.DeleteAsync(cvInfoId, cancellationToken);
 
+            logger.LogInformation("CV deleted successfully. CvInfoId: {CvInfoId} at {Timestamp}", cvInfoId, DateTime.UtcNow);
+
             return Ok(new ApiResponse<object>(null)
             {
                 Message = "CV deleted successfully.",
@@ -152,6 +169,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
         catch (CvUploadValidationException ex)
         {
+            logger.LogWarning("CV deletion validation failed. CvInfoId: {CvInfoId} at {Timestamp}: {Message}", cvInfoId, DateTime.UtcNow, ex.Message);
             return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
             {
                 Message = ex.Message,
@@ -172,6 +190,8 @@ public sealed class CvController(ICvService cvService) : ControllerBase
                 request,
                 cancellationToken);
 
+            logger.LogInformation("CV quality score updated successfully. CvId: {CvId}, Score: {QualityScore} at {Timestamp}", request.CvId, request.QualityScore, DateTime.UtcNow);
+
             return Ok(new ApiResponse<object>(null)
             {
                 Message = "CV quality score updated successfully."
@@ -179,6 +199,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
         catch (CvUploadValidationException ex)
         {
+            logger.LogWarning("CV quality score update validation failed at {Timestamp}: {Message}", DateTime.UtcNow, ex.Message);
             return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
             {
                 Message = ex.Message,
@@ -199,6 +220,8 @@ public sealed class CvController(ICvService cvService) : ControllerBase
                 request,
                 cancellationToken);
 
+            logger.LogInformation("Retrieved quality scores for {CvCount} CVs at {Timestamp}", response.Count, DateTime.UtcNow);
+
             return Ok(new CvQualityScoresResponse
             {
                 Data = response
@@ -206,6 +229,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
         }
         catch (CvUploadValidationException ex)
         {
+            logger.LogWarning("CV quality scores retrieval validation failed at {Timestamp}: {Message}", DateTime.UtcNow, ex.Message);
             return StatusCode(ex.StatusCode, new ApiResponse<object>(null)
             {
                 Message = ex.Message,

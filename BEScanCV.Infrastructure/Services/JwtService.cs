@@ -9,12 +9,15 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using BEScanCV.Application.DTOS.Response;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Infrastructure.Services;
 
 public sealed class JwtService(
     IOptions<JwtOptions> jwtOptions,
-    IRefreshTokenRepository refreshTokenRepo) : IJwtService
+    IRefreshTokenRepository refreshTokenRepo,
+    ILogger<JwtService> logger
+    ) : IJwtService
 {
     private readonly JwtOptions _options = jwtOptions.Value;
 
@@ -38,7 +41,7 @@ public sealed class JwtService(
             expires: DateTime.UtcNow.AddMinutes(_options.AccessTokenExpiryMinutes),
             signingCredentials: creds
         );
-
+        logger.LogInformation("Access token generated for user {UserId} at {Timestamp}", user.Id, DateTime.UtcNow);
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
@@ -59,6 +62,7 @@ public sealed class JwtService(
 
         await refreshTokenRepo.AddAsync(refreshEntity, ct);
 
+        logger.LogInformation("Refresh token and access token generated and stored for user {UserId} at {Timestamp}", user.Id, DateTime.UtcNow);
         return new CurrentUserWithTokenResponse
         {
             AccessToken = accessToken,
@@ -84,8 +88,11 @@ public sealed class JwtService(
         var userIdClaim = token.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
 
         if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out var userId))
+        {
+            logger.LogWarning("Failed to extract user ID from access token at {Timestamp}", DateTime.UtcNow);
             throw new SecurityTokenException("Invalid token");
-
+        }
+        logger.LogInformation("Extracted user ID {UserId} from access token at {Timestamp}", userId, DateTime.UtcNow);
         return userId;
     }
 
@@ -95,10 +102,14 @@ public sealed class JwtService(
         var stored = await refreshTokenRepo.GetByTokenHashAsync(tokenHash, ct);
 
         if (stored == null || stored.RevokedAt != null || stored.ExpiresAt < DateTime.UtcNow)
+        {
+            logger.LogWarning("Refresh token is invalid or expired at {Timestamp}", DateTime.UtcNow);
             throw new SecurityTokenException("Invalid or expired refresh token");
+        }
 
         await refreshTokenRepo.RevokeAsync(stored, ct);
         var newTokens = await GenerateTokensAsync(stored.User!, ct);
+        logger.LogInformation("Token refreshed for user {UserId} at {Timestamp}", newTokens.User.Id, DateTime.UtcNow);
         return new CurrentUserWithTokenResponse
         {
             AccessToken = newTokens.AccessToken,

@@ -4,12 +4,14 @@ using BEScanCV.Application.DTOS.Response;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Application.Services;
 
 public sealed class CvGetAllService(
     ICvInfoRepository cvInfoRepository,
-    IConfiguration configuration) : ICvGetAllService
+    IConfiguration configuration,
+    ILogger<CvGetAllService> logger) : ICvGetAllService
 {
     public async Task<CvGetAllResponse> CvGetAllAsync(
         CvGetAllRequest request,
@@ -28,6 +30,9 @@ public sealed class CvGetAllService(
 
         var totalPages = total == 0 ? 0 : (int)Math.Ceiling(total / (double)limit);
         var meta = new PaginationMetaDto(total, page, limit, totalPages);
+
+        logger.LogInformation("Retrieved {Count} CVs (Page: {Page}, Limit: {Limit}, Total: {Total}) at {Timestamp}", items.Length, page, limit, total, DateTime.UtcNow);
+
         return new CvGetAllResponse(items, meta);
     }
 
