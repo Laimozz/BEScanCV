@@ -5,12 +5,14 @@ using BEScanCV.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using Microsoft.Extensions.Logging;
+
 namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/users")]
 [Authorize]
-public sealed class UsersController(IUserService userService) : ControllerBase
+public sealed class UsersController(IUserService userService, ILogger<UsersController> logger) : ControllerBase
 {
     /// <summary>
     /// GET /api/v1/users?page=1&limit=10&role=&status=
@@ -23,7 +25,11 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         [FromQuery] string? status = null,
         CancellationToken cancellationToken = default)
     {
+        logger.LogInformation("Retrieving users. Page: {Page}, Limit: {Limit}, Role: {Role}, Status: {Status} at {Timestamp}", page, limit, role ?? "all", status ?? "all", DateTime.UtcNow);
+
         var response = await userService.GetUsersAsync(page, limit, role, status, cancellationToken);
+
+        logger.LogInformation("Retrieved {Count} users (Page: {Page}, Limit: {Limit}) at {Timestamp}", response.Meta.Total, page, limit, DateTime.UtcNow);
         return Ok(new ApiResponse<GetUsersResponse>(response)
         {
             Message = "Users retrieved successfully"
@@ -36,9 +42,12 @@ public sealed class UsersController(IUserService userService) : ControllerBase
     {
         try
         {
+            logger.LogInformation("Retrieving user with ID {UserId} at {Timestamp}", id, DateTime.UtcNow);
+
             var response = await userService.GetUserByIdAsync(id, cancellationToken);
             if (response is null)
             {
+                logger.LogWarning("User with ID {UserId} not found at {Timestamp}", id, DateTime.UtcNow);
                 return NotFound(new ApiResponse<GetUserResponse>(null)
                 {
                     Message = "User not found",
@@ -46,6 +55,7 @@ public sealed class UsersController(IUserService userService) : ControllerBase
                     StatusCode = StatusCodes.Status404NotFound
                 });
             }
+            logger.LogInformation("Retrieved user with ID {UserId} at {Timestamp}", id, DateTime.UtcNow);
             return Ok(new ApiResponse<GetUserResponse>(response)
             {
                 Message = "User retrieved successfully"
@@ -53,6 +63,7 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning(ex, "Failed to retrieve user with ID {UserId} at {Timestamp}: {Message}", id, DateTime.UtcNow, ex.Message);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -62,6 +73,7 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            logger.LogWarning(ex, "Failed to retrieve user with ID {UserId} at {Timestamp}: {Message}", id, DateTime.UtcNow, ex.Message);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -81,7 +93,11 @@ public sealed class UsersController(IUserService userService) : ControllerBase
     {
         try
         {
+            logger.LogInformation("Creating user with email {Email} at {Timestamp}", request.Email, DateTime.UtcNow);
+
             var response = await userService.CreateUserAsync(request, cancellationToken);
+
+            logger.LogInformation("Created user with ID {UserId} at {Timestamp}", response.Id, DateTime.UtcNow);
             return StatusCode(StatusCodes.Status201Created, new ApiResponse<CreateUserResponse>(response)
             {
                 Message = "User created successfully",
@@ -90,6 +106,7 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning(ex, "Failed to create user at {Timestamp}: {Message}", DateTime.UtcNow, ex.Message);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -99,6 +116,7 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            logger.LogWarning(ex, "Failed to create user at {Timestamp}: {Message}", DateTime.UtcNow, ex.Message);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -119,7 +137,11 @@ public sealed class UsersController(IUserService userService) : ControllerBase
     {
         try
         {
+            logger.LogInformation("Updating user with ID {UserId} at {Timestamp}", id, DateTime.UtcNow);
+
             await userService.UpdateUserAsync(id, request, cancellationToken);
+
+            logger.LogInformation("Updated user with ID {UserId} at {Timestamp}", id, DateTime.UtcNow);
             return Ok(new ApiResponse<object>(null)
             {
                 Message = "User updated successfully"
@@ -127,6 +149,7 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         }
         catch (KeyNotFoundException)
         {
+            logger.LogWarning("User with ID {UserId} not found for update at {Timestamp}", id, DateTime.UtcNow);
             return NotFound(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -136,6 +159,7 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning(ex, "Failed to update user with ID {UserId} at {Timestamp}: {Message}", id, DateTime.UtcNow, ex.Message);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -145,6 +169,7 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            logger.LogWarning(ex, "Failed to update user with ID {UserId} at {Timestamp}: {Message}", id, DateTime.UtcNow, ex.Message);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Success = false,
@@ -164,7 +189,11 @@ public sealed class UsersController(IUserService userService) : ControllerBase
     {
         try
         {
+            logger.LogInformation("Deleting user with ID {UserId} at {Timestamp}", id, DateTime.UtcNow);
+
             await userService.DeleteUserAsync(id, cancellationToken);
+
+            logger.LogInformation("Deleted user with ID {UserId} at {Timestamp}", id, DateTime.UtcNow);
             return Ok(new ApiResponse<object>(null)
             {
                 Message = "User deleted successfully"
@@ -172,6 +201,7 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         }
         catch (KeyNotFoundException)
         {
+            logger.LogWarning("User with ID {UserId} not found for deletion at {Timestamp}", id, DateTime.UtcNow);
             return NotFound(new ApiResponse<object>(null)
             {
                 Success = false,
