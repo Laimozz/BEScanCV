@@ -7,13 +7,15 @@ using BEScanCV.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using Org.BouncyCastle.Asn1;
 
 namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/auth")]
-public sealed class AuthController(IUserService userService, IJwtService jwtService) : ControllerBase
-{
+public sealed class AuthController(IUserService userService, IJwtService jwtService, ILogger<AuthController> logger) : ControllerBase
+{    
+
     [HttpPost("login")]
     public async Task<ActionResult<ApiResponse<CurrentUserWithTokenResponse>>> Login(
         [FromBody] LoginRequest request,
@@ -21,9 +23,13 @@ public sealed class AuthController(IUserService userService, IJwtService jwtServ
     {
         var user = await userService.GetByEmailAsync(request.Email.Trim().ToLowerInvariant(), ct);
         if (user == null || !userService.VerifyPassword(request.Password, user.PasswordHash))
+        {
+            logger.LogWarning("Failed login attempt for {Email} at {Timestamp}", request.Email, DateTime.UtcNow);
             return Unauthorized(new ApiResponse<object>(null) { Success = false, Message = "Invalid username or password", StatusCode = 401 });
+        }
         var tokens = await jwtService.GenerateTokensAsync(user, ct);
         SetRefreshTokenCookie(tokens.RefreshToken!, tokens.RefreshTokenExpiresAt!.Value);
+        logger.LogInformation("Successful login for {Email} at {Timestamp}", request.Email, DateTime.UtcNow);
         return Ok(new ApiResponse<CurrentUserWithTokenResponse>(tokens) { Message = "Login successful", StatusCode = 200 });
     }
 

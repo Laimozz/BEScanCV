@@ -2,10 +2,11 @@ using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
 using BEScanCV.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Infrastructure.Repositories;
 
-public sealed class UserRepository(BEScanCvDbContext dbContext) : IUserRepository
+public sealed class UserRepository(BEScanCvDbContext dbContext, ILogger<UserRepository> logger) : IUserRepository
 {
     public Task<User?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -15,10 +16,12 @@ public sealed class UserRepository(BEScanCvDbContext dbContext) : IUserRepositor
 
     public async Task<User?> GetByEmailAsync(string email, CancellationToken ct)
 {
-    Console.WriteLine($"[DEBUG] Looking up email: '{email}'"); // Add this
     var result = await dbContext.Users
         .FirstOrDefaultAsync(user => user.Email == email, ct);
-    Console.WriteLine($"[DEBUG] Found user: {result?.Id ?? 0}"); // Add this
+    if(result != null)
+        logger.LogInformation("User found from the email {Email}: User ID: {Id}, User full name {FullName}", email, result.Id, result.FullName);
+    else
+        logger.LogInformation("No user can be found from the email {Email}", email);      
     return result;
 }
     public async Task<(IReadOnlyList<User> Items, int TotalCount)> GetAllAsync(
