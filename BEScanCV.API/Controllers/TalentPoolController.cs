@@ -10,18 +10,20 @@ namespace BEScanCV.API.Controllers;
 [ApiController]
 [Route("api/v1/cvs")]
 [Authorize]
-public sealed class TalentPoolController(ITalentPoolService talentPoolService) : ControllerBase
+public sealed class TalentPoolController(ITalentPoolService talentPoolService, ILogger<TalentPoolController> logger) : ControllerBase
 {
     /// <summary>
     /// POST /api/v1/cvs/talent-pool
     /// Lấy danh sách CV đã đánh dấu vào Talent Pool (is_marked = true), có phân trang.
     /// </summary>
-    [HttpPost("talent-pool")] // Why post instead of get ?
+    [HttpPost("talent-pool")]
     public async Task<ActionResult<ApiResponse<TalentPoolResponse>>> GetTalentPool(
         [FromBody] TalentPoolRequest request,
         CancellationToken cancellationToken)
     {
+        logger.LogInformation("Retrieving talent pool. Page: {Page}, Limit: {Limit} at {Timestamp}", request.Page, request.Limit, DateTime.UtcNow);
         var response = await talentPoolService.GetTalentPoolAsync(request, cancellationToken);
+        logger.LogInformation("Retrieved talent pool. TotalItems: {TotalItems} at {Timestamp}", response.Meta.Total, DateTime.UtcNow);
         return Ok(new ApiResponse<TalentPoolResponse>(response));
     }
 
@@ -35,6 +37,7 @@ public sealed class TalentPoolController(ITalentPoolService talentPoolService) :
         [FromBody] MarkTalentRequest request,
         CancellationToken cancellationToken)
     {
+        logger.LogInformation("Marking talent. CvInfoId: {CvInfoId}, IsMarked: {IsMarked} at {Timestamp}", id, request.IsMarked, DateTime.UtcNow);
         try
         {
             var (isMarked, data) = await talentPoolService.MarkTalentAsync(
@@ -46,10 +49,12 @@ public sealed class TalentPoolController(ITalentPoolService talentPoolService) :
                 ? "CV marked as talent successfully"
                 : "CV removed from talent pool";
 
+            logger.LogInformation("CvInfoId: {CvInfoId} talent status updated. IsMarked: {IsMarked} at {Timestamp}", id, isMarked, DateTime.UtcNow);
             return Ok(new ApiResponse<object>(data) { Message = message });
         }
         catch (KeyNotFoundException)
         {
+            logger.LogWarning("CV not found for talent marking. CvInfoId: {CvInfoId} at {Timestamp}", id, DateTime.UtcNow);
             return NotFound(new ApiResponse<object>(null)
             {
                 Success = false,
