@@ -85,9 +85,13 @@ public sealed class CvSearchService(
         CvSemanticSearchRequest request,
         CancellationToken cancellationToken = default)
     {
-        var aiResults = await semanticSearchClient.SearchAsync(
-            request,
-            cancellationToken);
+        try
+        {
+            logger.LogInformation("Semantic search started. Query: {Query}, TopK: {TopK} at {Timestamp}", request.Query, request.TopK, DateTime.UtcNow);
+
+            var aiResults = await semanticSearchClient.SearchAsync(
+                request,
+                cancellationToken);
 
         var cvIds = aiResults
             .Where(result => !string.IsNullOrWhiteSpace(result.CvId))
@@ -146,6 +150,12 @@ public sealed class CvSearchService(
         logger.LogInformation("Semantic search completed. Results: {ResultCount} at {Timestamp}", responses.Length, DateTime.UtcNow);
 
         return responses;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Semantic search failed at {Timestamp}", DateTime.UtcNow);
+            throw;
+        }
     }
 
     private static CvSearchResponse CreatePagedResponse(int page, int limit, IReadOnlyCollection<CvSearchResultDto> rankedResults)

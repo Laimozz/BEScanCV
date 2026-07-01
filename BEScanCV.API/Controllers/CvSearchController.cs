@@ -5,13 +5,14 @@ using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs")]
 [Authorize]
-public sealed class CvSearchController(ICvSearchService cvSearchService) : ControllerBase
+public sealed class CvSearchController(ICvSearchService cvSearchService, ILogger<CvSearchController> logger) : ControllerBase
 {
     // [HttpPost("search")]
     // public async Task<ActionResult<ApiResponse<CvSearchResponse>>> Search(
@@ -61,6 +62,7 @@ public sealed class CvSearchController(ICvSearchService cvSearchService) : Contr
     {
         if (string.IsNullOrWhiteSpace(request.Query))
         {
+            logger.LogWarning("Semantic search failed. Query is empty at {Timestamp}", DateTime.UtcNow);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Message = "Query is required.",
@@ -71,6 +73,7 @@ public sealed class CvSearchController(ICvSearchService cvSearchService) : Contr
 
         if (request.TopK is <= 0)
         {
+            logger.LogWarning("Semantic search failed. topK must be greater than zero at {Timestamp}", DateTime.UtcNow);
             return BadRequest(new ApiResponse<object>(null)
             {
                 Message = "topK must be greater than zero.",
@@ -81,9 +84,13 @@ public sealed class CvSearchController(ICvSearchService cvSearchService) : Contr
 
         try
         {
+            logger.LogInformation("Semantic search received. Query: {Query}, TopK: {TopK} at {Timestamp}", request.Query, request.TopK, DateTime.UtcNow);
+
             var response = await cvSearchService.SemanticSearchAsync(
                 request,
                 cancellationToken);
+
+            logger.LogInformation("Semantic search completed. Results: {ResultCount} at {Timestamp}", response.Count, DateTime.UtcNow);
 
             return Ok(
                 new ApiResponse<IReadOnlyCollection<CvSearchSemanticResponse>>(
@@ -91,6 +98,7 @@ public sealed class CvSearchController(ICvSearchService cvSearchService) : Contr
         }
         catch (AiParserException ex)
         {
+            logger.LogWarning("Semantic search failed. StatusCode: {StatusCode} at {Timestamp}", ex.StatusCode, DateTime.UtcNow);
             return CreateAiErrorResponse(ex);
         }
     }
