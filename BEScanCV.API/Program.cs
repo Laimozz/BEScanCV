@@ -73,6 +73,29 @@ using (var scope = app.Services.CreateScope())
     {
         dbContext.Database.Migrate();
     }
+
+    if (builder.Configuration.GetValue<bool>("AdminSeed:Enabled"))
+    {
+        var email = builder.Configuration["AdminSeed:Email"];
+        var password = builder.Configuration["AdminSeed:Password"];
+        var fullName = builder.Configuration["AdminSeed:FullName"] ?? "System Admin";
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new InvalidOperationException("AdminSeed:Email must be configured when AdminSeed is enabled.");
+        }
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException("AdminSeed:Password must be configured when AdminSeed is enabled.");
+        }
+
+        await DatabaseSeeder.SeedAdminAsync(
+            dbContext,
+            email,
+            password,
+            fullName);
+    }
 }
 
 // Configure the HTTP request pipeline.
