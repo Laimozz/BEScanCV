@@ -251,6 +251,7 @@ public sealed class CvService(
         cvInfo.WorkType = NormalizeAllowedUpdateValue(request.WorkType, cvInfo.WorkType);
         cvInfo.Note = NormalizeUpdateValue(request.Note, cvInfo.Note);
         cvInfo.DateOfBirth = ParseDateOfBirth(request.DateOfBirth, cvInfo.DateOfBirth);
+        cvInfo.TotalExperienceYears = request.YearsOfExperience ?? cvInfo.TotalExperienceYears;
         cvInfo.UpdatedAt = DateTime.UtcNow;
 
         var requestedCertifications = request.Certifications?
@@ -337,6 +338,7 @@ public sealed class CvService(
             WorkType = cvInfo.WorkType,
             Note = cvInfo.Note,
             DateOfBirth = cvInfo.DateOfBirth,
+            YearsOfExperience = cvInfo.TotalExperienceYears,
             UpdatedAt = cvInfo.UpdatedAt
         };
     }
@@ -638,6 +640,11 @@ public sealed class CvService(
                 throw new CvUploadValidationException(
                     "date_of_birth must be in yyyy-MM-dd, yyyy/MM/dd, dd-MM-yyyy, or dd/MM/yyyy format.");
             }
+        }
+
+        if (request.YearsOfExperience is < 0)
+        {
+            throw new CvUploadValidationException("years_of_experience must be a non-negative number.");
         }
     }
 
