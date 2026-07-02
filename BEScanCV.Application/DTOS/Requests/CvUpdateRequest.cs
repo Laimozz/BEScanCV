@@ -36,6 +36,9 @@ public sealed class CvUpdateRequest
 
     [JsonPropertyName("note")]
     public string? Note { get; set; }
+
+    [JsonPropertyName("date_of_birth")]
+    public string? DateOfBirth { get; set; }
 }
 
 public sealed class CvEducationUniversityUpdateRequest

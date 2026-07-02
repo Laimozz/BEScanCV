@@ -46,4 +46,7 @@ public sealed class CvUpdateResponse
 
     [JsonPropertyName("updated_at")]
     public DateTime UpdatedAt { get; set; }
+
+    [JsonPropertyName("date_of_birth")]
+    public DateOnly? DateOfBirth { get; set; }
 }

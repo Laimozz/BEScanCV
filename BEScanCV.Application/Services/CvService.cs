@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -248,6 +250,7 @@ public sealed class CvService(
         cvInfo.Tag = NormalizeAllowedUpdateValue(request.Tag, cvInfo.Tag) ?? cvInfo.Tag;
         cvInfo.WorkType = NormalizeAllowedUpdateValue(request.WorkType, cvInfo.WorkType);
         cvInfo.Note = NormalizeUpdateValue(request.Note, cvInfo.Note);
+        cvInfo.DateOfBirth = ParseDateOfBirth(request.DateOfBirth, cvInfo.DateOfBirth);
         cvInfo.UpdatedAt = DateTime.UtcNow;
 
         var requestedCertifications = request.Certifications?
@@ -333,6 +336,7 @@ public sealed class CvService(
             Tag = cvInfo.Tag,
             WorkType = cvInfo.WorkType,
             Note = cvInfo.Note,
+            DateOfBirth = cvInfo.DateOfBirth,
             UpdatedAt = cvInfo.UpdatedAt
         };
     }
@@ -617,6 +621,24 @@ public sealed class CvService(
                     "work_experience company, position, and duration cannot exceed 255 characters.");
             }
         }
+
+        if (!string.IsNullOrWhiteSpace(request.DateOfBirth))
+        {
+            var trimmed = request.DateOfBirth.Trim();
+            var allowedFormats = new[]
+            {
+                "yyyy-MM-dd",
+                "yyyy/MM/dd",
+                "dd-MM-yyyy",
+                "dd/MM/yyyy"
+            };
+
+            if (!DateOnly.TryParseExact(trimmed, allowedFormats, null, DateTimeStyles.None, out _))
+            {
+                throw new CvUploadValidationException(
+                    "date_of_birth must be in yyyy-MM-dd, yyyy/MM/dd, dd-MM-yyyy, or dd/MM/yyyy format.");
+            }
+        }
     }
 
     private static JsonDocument? PatchEducationUniversities(
@@ -668,6 +690,31 @@ public sealed class CvService(
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static DateOnly? ParseDateOfBirth(string? requestedValue, DateOnly? currentValue)
+    {
+        if (string.IsNullOrWhiteSpace(requestedValue))
+        {
+            return currentValue;
+        }
+
+        var trimmed = requestedValue.Trim();
+        var allowedFormats = new[]
+        {
+            "yyyy-MM-dd",
+            "yyyy/MM/dd",
+            "dd-MM-yyyy",
+            "dd/MM/yyyy"
+        };
+
+        if (DateOnly.TryParseExact(trimmed, allowedFormats, null, DateTimeStyles.None, out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new CvUploadValidationException(
+            "date_of_birth must be in yyyy-MM-dd, yyyy/MM/dd, dd-MM-yyyy, or dd/MM/yyyy format.");
+    }
 
     private static async Task<byte[]> ReadFileAsync(
         CvBulkUploadFileInput file,
