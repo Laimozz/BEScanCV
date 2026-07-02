@@ -66,11 +66,15 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             entity.Property(e => e.FileType).HasColumnName("file_type").HasMaxLength(20);
             entity.Property(e => e.FileSize).HasColumnName("file_size");
             entity.Property(e => e.AiDocumentId).HasColumnName("ai_document_id").HasMaxLength(255);
+            entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.DeletedBy).HasColumnName("deleted_by");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.HasOne(e => e.Uploader).WithMany(e => e.CvFiles).HasForeignKey(e => e.UploadedBy);
             entity.HasOne(e => e.CvInfo).WithOne(e => e.CvFile).HasForeignKey<CvInfo>(e => e.CvFileId);
             entity.HasIndex(e => e.AiDocumentId);
+            entity.HasQueryFilter(e => !e.IsDeleted);
         });
 
         modelBuilder.Entity<CvInfo>(entity =>
@@ -110,6 +114,7 @@ public sealed class BEScanCvDbContext(DbContextOptions<BEScanCvDbContext> option
             entity.Property(e => e.Note).HasColumnName("note").HasColumnType("text");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasQueryFilter(e => e.CvFile != null && !e.CvFile.IsDeleted);
         });
 
         modelBuilder.Entity<CvSkill>(entity =>

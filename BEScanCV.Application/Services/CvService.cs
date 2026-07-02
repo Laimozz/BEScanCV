@@ -8,6 +8,7 @@ using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
 using BEScanCV.Application.Interfaces.Repositories;
 using BEScanCV.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace BEScanCV.Application.Services;
 
@@ -19,7 +20,8 @@ public sealed class CvService(
     ICvUploadBatchRepository cvUploadBatchRepository,
     ICvUploadBatchItemRepository cvUploadBatchItemRepository,
     ICvUploadJobQueue cvUploadJobQueue,
-    IUploadProgressNotifier uploadProgressNotifier) : ICvService
+    IUploadProgressNotifier uploadProgressNotifier,
+    ILogger<CvService> logger) : ICvService
 {
     private static readonly string[] AllowedExtensions = [".pdf", ".docx", ".doc"];
     private static readonly string[] AllowedTags = ["new", "contacted", "in-process", "rejected", "hired"];
@@ -339,6 +341,7 @@ public sealed class CvService(
 
     public async Task DeleteAsync(
         long cvInfoId,
+        long? deletedBy,
         CancellationToken cancellationToken = default)
     {
         if (cvInfoId <= 0)
@@ -357,7 +360,10 @@ public sealed class CvService(
         await cvCleanupService.DeleteAsync(
             cvInfo.CvFile.Id,
             cvInfo.CvFile.FileUrl,
+            deletedBy,
             cancellationToken);
+
+        logger.LogInformation("CV deleted successfully. CvInfoId: {CvInfoId}, CvFileId: {CvFileId}, DeletedBy: {DeletedBy} at {Timestamp}", cvInfoId, cvInfo.CvFile.Id, deletedBy, DateTime.UtcNow);
     }
 
     public async Task UpdateQualityScoreAsync(

@@ -24,6 +24,7 @@ public interface ICvService
 
     Task DeleteAsync(
         long cvInfoId,
+        long? deletedBy,
         CancellationToken cancellationToken = default);
 
     Task UpdateQualityScoreAsync(

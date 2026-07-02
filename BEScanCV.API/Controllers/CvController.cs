@@ -145,7 +145,7 @@ public sealed class CvController(ICvService cvService) : ControllerBase
     {
         try
         {
-            await cvService.DeleteAsync(cvInfoId, cancellationToken);
+            await cvService.DeleteAsync(cvInfoId, GetCurrentUserId(), cancellationToken);
 
             return Ok(new ApiResponse<object>(null)
             {

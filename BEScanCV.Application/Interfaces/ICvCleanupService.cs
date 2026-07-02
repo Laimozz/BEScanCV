@@ -8,6 +8,7 @@ public interface ICvCleanupService
         long cvFileId,
         string filePath,
         string errorMessage,
+        long? deletedBy,
         CancellationToken cancellationToken = default);
 
     Task CleanupCancelledAsync(
@@ -15,10 +16,12 @@ public interface ICvCleanupService
         long cvFileId,
         string filePath,
         string errorMessage,
+        long? deletedBy,
         CancellationToken cancellationToken = default);
 
     Task DeleteAsync(
         long cvFileId,
         string filePath,
+        long? deletedBy,
         CancellationToken cancellationToken = default);
 }

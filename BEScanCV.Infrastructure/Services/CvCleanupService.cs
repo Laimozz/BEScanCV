@@ -16,6 +16,7 @@ public sealed class CvCleanupService(
         long cvFileId,
         string filePath,
         string errorMessage,
+        long? deletedBy,
         CancellationToken cancellationToken = default)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -25,7 +26,7 @@ public sealed class CvCleanupService(
             ?? throw new InvalidOperationException(
                 $"Upload batch {batchId} was not found while cleaning a failed job.");
 
-        var deletedCvFiles = await DeleteCvDataAsync(cvFileId, cancellationToken);
+        var deletedCvFiles = await DeleteCvDataAsync(cvFileId, deletedBy, cancellationToken);
         if (deletedCvFiles > 0)
         {
             batch.ProcessingFiles = Math.Max(0, batch.ProcessingFiles - 1);
@@ -50,11 +51,12 @@ public sealed class CvCleanupService(
         long cvFileId,
         string filePath,
         string errorMessage,
+        long? deletedBy,
         CancellationToken cancellationToken = default)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        await DeleteCvDataAsync(cvFileId, cancellationToken);
+        await DeleteCvDataAsync(cvFileId, deletedBy, cancellationToken);
         await MarkItemFailedAsync(batchUploadItemId, errorMessage, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         await fileStorageService.DeleteAsync(filePath, cancellationToken);
@@ -68,11 +70,12 @@ public sealed class CvCleanupService(
     public async Task DeleteAsync(
         long cvFileId,
         string filePath,
+        long? deletedBy,
         CancellationToken cancellationToken = default)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        var deletedCvFiles = await DeleteCvDataAsync(cvFileId, cancellationToken);
+        var deletedCvFiles = await DeleteCvDataAsync(cvFileId, deletedBy, cancellationToken);
         if (deletedCvFiles == 0)
         {
             throw new InvalidOperationException($"CV file {cvFileId} was not found.");
@@ -89,6 +92,7 @@ public sealed class CvCleanupService(
 
     private async Task<int> DeleteCvDataAsync(
         long cvFileId,
+        long? deletedBy,
         CancellationToken cancellationToken)
     {
         var cvInfoIds = dbContext.CvInfos
@@ -111,9 +115,14 @@ public sealed class CvCleanupService(
             .Where(cvInfo => cvInfo.CvFileId == cvFileId)
             .ExecuteDeleteAsync(cancellationToken);
 
+        var now = DateTime.UtcNow;
         return await dbContext.CvFiles
+            .IgnoreQueryFilters()
             .Where(cvFile => cvFile.Id == cvFileId)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(f => f.IsDeleted, true)
+                .SetProperty(f => f.DeletedAt, now)
+                .SetProperty(f => f.DeletedBy, deletedBy), cancellationToken);
     }
 
     private Task<int> MarkItemFailedAsync(

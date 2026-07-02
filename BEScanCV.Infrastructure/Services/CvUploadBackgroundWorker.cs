@@ -275,6 +275,7 @@ public sealed class CvUploadBackgroundWorker(
             job.CvFileId,
             job.FileUrl,
             "Batch cancelled.",
+            deletedBy: null,
             cancellationToken);
 
         var notifier =
@@ -309,6 +310,7 @@ public sealed class CvUploadBackgroundWorker(
             job.CvFileId,
             job.FileUrl,
             "Unable to process the CV file.",
+            deletedBy: null,
             cancellationToken);
 
         await notifier.NotifyAsync(job.BatchId, new
