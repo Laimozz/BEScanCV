@@ -1,16 +1,18 @@
-using System.Security.Claims;
 using BEScanCV.API.Common;
 using BEScanCV.Application.DTOS.Requests;
 using BEScanCV.Application.DTOS.Response;
 using BEScanCV.Application.Exceptions;
 using BEScanCV.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 
 namespace BEScanCV.API.Controllers;
 
 [ApiController]
 [Route("api/v1/cvs")]
+[Authorize]
 public sealed class CvController(ICvService cvService, ILogger<CvController> logger) : ControllerBase
 {
     [HttpPost("bulk-upload")]
@@ -69,6 +71,7 @@ public sealed class CvController(ICvService cvService, ILogger<CvController> log
             });
         }
     }
+
 
     [HttpGet("bulk-upload/{batchId}")]
     public async Task<ActionResult<ApiResponse<CvBatchUploadStatusResponse>>> GetBatchStatus(
@@ -179,6 +182,7 @@ public sealed class CvController(ICvService cvService, ILogger<CvController> log
         }
     }
 
+    [AllowAnonymous]
     [HttpPost("quality-score")]
     public async Task<ActionResult<ApiResponse<object>>> UpdateQualityScore(
         [FromBody] CvQualityScoreRequest request,
@@ -208,7 +212,7 @@ public sealed class CvController(ICvService cvService, ILogger<CvController> log
             });
         }
     }
-
+    [AllowAnonymous]
     [HttpPost("quality-scores")]
     public async Task<ActionResult<CvQualityScoresResponse>> GetQualityScores(
         [FromBody] CvQualityScoresRequest request,

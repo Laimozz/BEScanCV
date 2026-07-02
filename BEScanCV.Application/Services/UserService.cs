@@ -99,7 +99,8 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
 
         var password = GeneratePassword(8);
 
-        if (!string.IsNullOrWhiteSpace(request.Role) && !ValidRoles.Contains(request.Role))
+        var normalizedRole = NormalizeOptionalValue(request.Role);
+        if (normalizedRole is not null && !ValidRoles.Contains(normalizedRole))
         {
             logger.LogWarning("Attempted to create user with invalid role at {Timestamp}", DateTime.UtcNow);
             throw new ArgumentException($"Invalid role. Allowed values: {string.Join(", ", ValidRoles)}");
@@ -117,7 +118,7 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
             FullName = request.FullName.Trim(),
             Email = request.Email.Trim().ToLowerInvariant(),
             PasswordHash = Hasher.Hash(password),
-            Role = string.IsNullOrWhiteSpace(request.Role) ? "recruiter" : request.Role.ToLowerInvariant(),
+            Role = normalizedRole ?? "recruiter",
             Status = "active",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -154,22 +155,24 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
 
         if (request.Role is not null)
         {
-            if (!ValidRoles.Contains(request.Role))
+            var normalizedRole = NormalizeRequiredValue(request.Role);
+            if (!ValidRoles.Contains(normalizedRole))
             {
                 logger.LogWarning("Attempted to update user ID {UserId} with invalid role at {Timestamp}", id, DateTime.UtcNow);
                 throw new ArgumentException($"Invalid role. Allowed values: {string.Join(", ", ValidRoles)}");
             }
-            user.Role = request.Role;
+            user.Role = normalizedRole;
         }
 
         if (request.Status is not null)
         {
-            if (!ValidStatuses.Contains(request.Status))
+            var normalizedStatus = NormalizeRequiredValue(request.Status);
+            if (!ValidStatuses.Contains(normalizedStatus))
             {
                 logger.LogWarning("Attempted to update user ID {UserId} with invalid status at {Timestamp}", id, DateTime.UtcNow);
                 throw new ArgumentException($"Invalid status. Allowed values: {string.Join(", ", ValidStatuses)}");
             }
-            user.Status = request.Status;
+            user.Status = normalizedStatus;
         }
 
         user.UpdatedAt = DateTime.UtcNow;
@@ -255,6 +258,18 @@ public sealed class UserService(IUserRepository userRepository, IHasher Hasher, 
         return new string(Enumerable.Range(0, length)
         .Select(_ => TemporaryPasswordCharacters[RandomNumberGenerator.GetInt32(TemporaryPasswordCharacters.Length)])
         .ToArray());
+    }
+
+    private static string? NormalizeOptionalValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeRequiredValue(string value)
+    {
+        return value.Trim().ToLowerInvariant();
     }
 
     public async Task<UserDto?> GetCurrentUserAsync(long userId, CancellationToken cancellationToken)

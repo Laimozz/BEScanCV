@@ -17,6 +17,8 @@ appsettings.Development.json
 appsettings.Production.json
 *.env
 .env
+.env.*
+!.env.example
 
 # Logs
 logs/

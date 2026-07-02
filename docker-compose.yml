@@ -12,21 +12,34 @@ services:
       redis:
         condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       UseInMemoryDb: "false"
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=cv_project;Username=postgres;Password=postgres
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-cv_project};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       ConnectionStrings__Redis: redis:6379,abortConnect=false
-      Database__UseEnsureCreated: "true"
+      Database__UseEnsureCreated: "false"
       CvStorage__LocalPdfFolder: /app/data/pdfs
-      PublicBaseUrl: http://localhost:5226
-      Jwt__Secret: docker-dev-secret-key-at-least-32-characters-long
-      Jwt__Issuer: BEScanCV
-      Jwt__Audience: BEScanCV-Clients
-      Jwt__AccessTokenExpiryMinutes: 15
-      Jwt__RefreshTokenExpiryDays: 7
+      PublicBaseUrl: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL, for example https://api.example.com}
+      AllowedHosts: ${ALLOWED_HOSTS:-*}
+      AiService__BaseUrl: ${AI_SERVICE_BASE_URL:?Set AI_SERVICE_BASE_URL}
+      AiService__ParseSearchQueryPath: ${AI_PARSE_SEARCH_QUERY_PATH:-/api/v1/extract-query}
+      AiService__ProcessCvPath: ${AI_PROCESS_CV_PATH:-/api/v1/cv/index}
+      AiService__SemanticSearchPath: ${AI_SEMANTIC_SEARCH_PATH:-/api/v1/cv/match}
+      AiService__ApiKey: ${AI_SERVICE_API_KEY:-}
+      EmailSettings__SmtpServer: ${SMTP_SERVER:-smtp.gmail.com}
+      EmailSettings__Port: ${SMTP_PORT:-587}
+      EmailSettings__Username: ${SMTP_USERNAME:-}
+      EmailSettings__Password: ${SMTP_PASSWORD:-}
+      EmailSettings__SenderEmail: ${SMTP_SENDER_EMAIL:-}
+      EmailSettings__SenderName: ${SMTP_SENDER_NAME:-RecruitAI}
+      Jwt__Secret: ${JWT_SECRET:?Set JWT_SECRET with at least 32 characters}
+      Jwt__Issuer: ${JWT_ISSUER:-BEScanCV}
+      Jwt__Audience: ${JWT_AUDIENCE:-BEScanCV-Clients}
+      Jwt__AccessTokenExpiryMinutes: ${JWT_ACCESS_TOKEN_EXPIRY_MINUTES:-15}
+      Jwt__RefreshTokenExpiryDays: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:-7}
     ports:
-      - "5226:8080"
+      - "${API_HTTP_PORT:-5226}:8080"
     volumes:
       - bescancv_pdf_data:/app/data/pdfs
 
@@ -35,15 +48,13 @@ services:
     container_name: bescancv-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: cv_project
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${POSTGRES_DB:-cv_project}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - bescancv_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cv_project"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,8 +64,6 @@ services:
     container_name: bescancv-redis
     restart: unless-stopped
     command: redis-server --appendonly yes
-    ports:
-      - "6379:6379"
     volumes:
       - bescancv_redis_data:/data
     healthcheck:

@@ -64,7 +64,6 @@ using (var scope = app.Services.CreateScope())
     if (useInMemory)
     {
         dbContext.Database.EnsureCreated(); // InMemory: tạo schema trong RAM
-        await DatabaseSeeder.SeedUsersAsync(dbContext);
     }
     else if (builder.Configuration.GetValue<bool>("Database:UseEnsureCreated"))
     {
@@ -73,6 +72,29 @@ using (var scope = app.Services.CreateScope())
     else
     {
         dbContext.Database.Migrate();
+    }
+
+    if (builder.Configuration.GetValue<bool>("AdminSeed:Enabled"))
+    {
+        var email = builder.Configuration["AdminSeed:Email"];
+        var password = builder.Configuration["AdminSeed:Password"];
+        var fullName = builder.Configuration["AdminSeed:FullName"] ?? "System Admin";
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new InvalidOperationException("AdminSeed:Email must be configured when AdminSeed is enabled.");
+        }
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException("AdminSeed:Password must be configured when AdminSeed is enabled.");
+        }
+
+        await DatabaseSeeder.SeedAdminAsync(
+            dbContext,
+            email,
+            password,
+            fullName);
     }
 }
 
@@ -113,6 +135,9 @@ if (string.IsNullOrWhiteSpace(localPdfFolder))
 if (!Directory.Exists(localPdfFolder))
     Directory.CreateDirectory(localPdfFolder);
 
+var pdfStorageRoot = Path.GetFullPath(localPdfFolder)
+    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(localPdfFolder),
@@ -123,6 +148,14 @@ app.UseStaticFiles(new StaticFileOptions
             "Access-Control-Allow-Origin",
             "*"
         );
+
+        if (string.Equals(
+                Path.GetExtension(ctx.File.Name),
+                ".pdf",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers.ContentDisposition = "inline";
+        }
     }
 });
 
@@ -135,6 +168,41 @@ app.Map("/ws/upload-progress/{batchId}", async (
     WebSocketUploadProgressNotifier notifier) =>
 {
     await notifier.HandleClientAsync(httpContext, batchId, httpContext.RequestAborted);
+});
+
+app.MapMethods("/files/{fileName}", ["GET", "HEAD"], IResult (string fileName) =>
+{
+    var safeFileName = Path.GetFileName(fileName);
+    if (!string.Equals(fileName, safeFileName, StringComparison.Ordinal))
+    {
+        return Results.BadRequest();
+    }
+
+    var filePath = Path.GetFullPath(Path.Combine(pdfStorageRoot, safeFileName));
+    if (!filePath.StartsWith(
+            pdfStorageRoot + Path.DirectorySeparatorChar,
+            StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.BadRequest();
+    }
+
+    if (!System.IO.File.Exists(filePath))
+    {
+        return Results.NotFound();
+    }
+
+    var contentType = Path.GetExtension(filePath).ToLowerInvariant() switch
+    {
+        ".pdf" => "application/pdf",
+        ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".doc" => "application/msword",
+        _ => "application/octet-stream"
+    };
+
+    return Results.File(
+        System.IO.File.OpenRead(filePath),
+        contentType,
+        enableRangeProcessing: true);
 });
 
 app.MapControllers();
